@@ -45,21 +45,15 @@ impl Constraints{
     ) -> Constraints {
 
         // vector sizes
-        let t: usize = s*n + n + 2*s + 4;
+        let t: usize = s*n + n + s + 3;
         let sn: usize = s*n;
-        let p_len = n+4;
+        let p_len = n+3;
         let order = FE::q();
 
         // challenge powers
         let u_s = (0..s)
             .map(|i| {
                 BigInt::mod_pow(&u, &BigInt::from(i as u32), &order)
-            })
-            .collect::<Vec<BigInt>>();
-        
-        let v_s = (0..s)
-            .map(|i| {
-                BigInt::mod_pow(&v, &BigInt::from(i as u32), &order)
             })
             .collect::<Vec<BigInt>>();
 
@@ -86,14 +80,14 @@ impl Constraints{
                 BigInt::mod_pow(&y, &BigInt::from(i as u32), &order)
             })
             .collect::<Vec<BigInt>>();
-        
-        let vs_kronecker_yn = (0..sn)
+
+        let us_kronecker_yn = (0..sn)
             .map(|i| {
                 let j = i % n;
                 let k = i / n;
                 let y_j = BigInt::mod_pow(&y, &BigInt::from(j as u32), &order);
-                let v_k = BigInt::mod_pow(&v, &BigInt::from(k as u32), &order);
-                BigInt::mod_mul(&v_k, &y_j, &order)
+                let u_k = BigInt::mod_pow(&u, &BigInt::from(k as u32), &order);
+                BigInt::mod_mul(&u_k, &y_j, &order)
             })
             .collect::<Vec<BigInt>>();
         
@@ -108,19 +102,23 @@ impl Constraints{
         let z_2 = BigInt::mod_pow(&z, &BigInt::from(2), &order);
         let z_3 = BigInt::mod_pow(&z, &BigInt::from(3), &order);
         let z_4 = BigInt::mod_pow(&z, &BigInt::from(4), &order);
-        let z_5 = BigInt::mod_pow(&z, &BigInt::from(5), &order);
-        let z_6 = BigInt::mod_pow(&z, &BigInt::from(6), &order);
-        let z_7 = BigInt::mod_pow(&z, &BigInt::from(7), &order);
         
+        let v_minus_1 = BigInt::mod_sub(&v, &BigInt::one(), &order);
+        let v_minus_1_us = (0..s)
+            .map(|i| {
+                BigInt::mod_mul(&v_minus_1, &u_s[i], &order)
+            })
+            .collect::<Vec<BigInt>>();
+
         // Define constraints fn(u,v,y) : part 1
         let v0 = (0..t)
             .map(|i| {
-                if i >= p_len && i < t-2*s {
+                if i >= p_len && i < t-s {
                     y_sn[i-p_len].clone()
                 }
                 else {
                     // Solving the issue of theta by changing v0
-                    z_7.clone()
+                    BigInt::one()
                 }
             })
             .collect::<Vec<BigInt>>();
@@ -128,10 +126,13 @@ impl Constraints{
         let v1 = (0..t)
             .map(|i| {
                 if i==0 {
+                    v.clone()
+                }
+                else if i==1 {
                     BigInt::one()
                 }
                 else if i >= t-s {
-                    v_s[(i+s)-t].clone()
+                    v_minus_1_us[(i+s)-t].clone()
                 }
                 else {
                     BigInt::zero()
@@ -141,11 +142,11 @@ impl Constraints{
 
         let v2 = (0..t)
             .map(|i| {
-                if i==1 {
-                    BigInt::one()
+                if i >= 2 && i < n+2 {
+                    minus_y_n[i-2].clone()
                 }
-                else if i >= t-s {
-                    u_s[(i+s)-t].clone()
+                else if i < t-s && i >= n+3{
+                    us_kronecker_yn[i - (n+3)].clone()
                 }
                 else {
                     BigInt::zero()
@@ -155,11 +156,11 @@ impl Constraints{
 
         let v3 = (0..t)
             .map(|i| {
-                if i==2 {
-                    BigInt::one()
+                if i == (n+2) {
+                    y_pow_s.clone()
                 }
-                else if i < t-s && i >= t-2*s{
-                    BigInt::mod_add(&u_s[(i + 2*s) - t], &v_s[(i + 2*s) - t], &order)
+                else if i < t-s && i >= n+3{
+                    ys_kronecker_1n[i - (n+3)].clone()
                 }
                 else {
                     BigInt::zero()
@@ -169,35 +170,7 @@ impl Constraints{
 
         let v4 = (0..t)
             .map(|i| {
-                if i >= 3 && i < n+3 {
-                    minus_y_n[i-3].clone()
-                }
-                else if i < t-2*s && i >= t-2*s-s*n{
-                    vs_kronecker_yn[(i + s*n + 2*s) - t].clone()
-                }
-                else {
-                    BigInt::zero()
-                }
-            })
-            .collect::<Vec<BigInt>>();
-
-        let v5 = (0..t)
-            .map(|i| {
-                if i == (n+3) {
-                    y_pow_s.clone()
-                }
-                else if i < t-2*s && i >= t-2*s-s*n{
-                    ys_kronecker_1n[(i + s*n + 2*s) - t].clone()
-                }
-                else {
-                    BigInt::zero()
-                }
-            })
-            .collect::<Vec<BigInt>>();
-
-        let v6 = (0..t)
-            .map(|i| {
-                if i >= p_len && i < t-2*s {
+                if i >= p_len && i < t-s {
                     y_sn[i-p_len].clone()
                 }
                 else {
@@ -214,12 +187,8 @@ impl Constraints{
                 let zeta_1 = BigInt::mod_mul(&z, &v1[i], &order);
                 let zeta_2 = BigInt::mod_mul(&z_2, &v2[i], &order);
                 let zeta_3 = BigInt::mod_mul(&z_3, &v3[i], &order);
-                let zeta_4 = BigInt::mod_mul(&z_4, &v4[i], &order);
-                let zeta_5 = BigInt::mod_mul(&z_5, &v5[i], &order);
                 let zeta_s1 = BigInt::mod_add(&zeta_1, &zeta_2, &order);
-                let zeta_s2 = BigInt::mod_add(&zeta_3, &zeta_4, &order);
-                let zeta_s3 = BigInt::mod_add(&zeta_s1, &zeta_s2, &order);
-                BigInt::mod_add(&zeta_s3, &zeta_5, &order)
+                BigInt::mod_add(&zeta_s1, &zeta_3, &order)
             })
             .collect::<Vec<BigInt>>();
 
@@ -231,7 +200,7 @@ impl Constraints{
         
         let nu = (0..t)
             .map(|i| {
-                BigInt::mod_mul(&z_6, &v6[i], &order)
+                BigInt::mod_mul(&z_4, &v4[i], &order)
             })  
             .collect::<Vec<BigInt>>();
 
@@ -242,7 +211,7 @@ impl Constraints{
             .collect::<Vec<BigInt>>();
         
         // Note that alpha = theta_inv * nu
-        // No (-) sign before nu since we want <cL+cR-1^{t}, v6>=0
+        // No (-) sign before nu since we want <cL+cR-1^{t}, v4>=0
         let alpha = (0..t)
             .map(|i| {
                 BigInt::mod_mul(&theta_inv[i], &nu[i], &order)
@@ -261,14 +230,14 @@ impl Constraints{
             })
             .fold(y_pow_s.clone(), |acc, x| BigInt::mod_add(&acc, &x, &order));
 
-        let one_s_ys_z5 = BigInt::mod_mul(&one_s_ys, &z_5, &order);
+        let one_s_ys_z3 = BigInt::mod_mul(&one_s_ys, &z_3, &order);
         
         let delta: BigInt = (0..t)
             .map(|i| {
                 let alp_mu_i = BigInt::mod_mul(&alpha[i], &mu[i], &order);
                 BigInt::mod_add(&nu[i], &alp_mu_i, &order)
             })
-            .fold(one_s_ys_z5.clone(), |acc, x| BigInt::mod_add(&acc, &x, &order));
+            .fold(one_s_ys_z3.clone(), |acc, x| BigInt::mod_add(&acc, &x, &order));
 
         return Constraints{
             alpha,
@@ -325,11 +294,11 @@ impl RevelioPlus {
         let s: usize = a_vec.len(); 
 
         // size of honestly encoded witness vector
-        let t: usize = s*n + n + 2*s + 4;
+        let t: usize = s*n + n + s + 3;
 
         // other prelims
         let order = FE::q();
-        let p_len = n+4;
+        let p_len = n+3;
         
         // generate key-images I = r.Gt + a.H
         let I_vec = (0..s)
@@ -354,37 +323,32 @@ impl RevelioPlus {
         let Y_hat: &[GE] = C_vec;
         let Y_hat_vec = Y_hat.to_vec();
 
+        let minus1 = BigInt::mod_sub(&BigInt::zero(), &BigInt::one(), &order);
+        let I0_inv = I_vec[0] * &(ECScalar::from(&minus1));
         let I_hat: GE = (1..s)
             .map(|i| {
                 let u_i = BigInt::mod_pow(&u_bn, &BigInt::from(i as u32), &order);
-                let u_i_fe: FE = ECScalar::from(&u_i);
+                let minus_ui = BigInt::mod_sub(&BigInt::zero(), &u_i, &order);
+                let u_i_fe: FE = ECScalar::from(&minus_ui);
                 I_vec[i] * &u_i_fe
             })
-            .fold(I_vec[0], |acc, x| acc.add_point(&x.get_element()));
+            .fold(I0_inv, |acc, x| acc.add_point(&x.get_element()));
 
         // define compressed secrets
         let xi = (0..s)
             .map(|i| {
-                let v_i = BigInt::mod_pow(&v_bn, &BigInt::from(i as u32), &order);
-                BigInt::mod_mul(&v_i, &r_vec[i].to_big_int(), &order)
+                let u_i = BigInt::mod_pow(&u_bn, &BigInt::from(i as u32), &order);
+                let us_r_i = BigInt::mod_mul(&u_i, &r_vec[i].to_big_int(), &order);
+                BigInt::mod_sub(&BigInt::zero(), &us_r_i, &order)
             })
-            .fold(BigInt::zero(), |acc, x| BigInt::mod_sub(&acc, &x, &order));
+            .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc,&x,&order));
               
         let xi_prime = (0..s)
             .map(|i| {
                 let u_i = BigInt::mod_pow(&u_bn, &BigInt::from(i as u32), &order);
                 BigInt::mod_mul(&u_i, &r_vec[i].to_big_int(), &order)
             })
-            .fold(BigInt::zero(), |acc, x| BigInt::mod_sub(&acc, &x, &order));
-
-        let eta = (0..s)
-            .map(|i| {
-                let u_i = BigInt::mod_pow(&u_bn, &BigInt::from(i as u32), &order);
-                let v_i = BigInt::mod_pow(&v_bn, &BigInt::from(i as u32), &order);
-                let u_i_plus_v_i = BigInt::mod_add(&u_i, &v_i, &order);
-                BigInt::mod_mul(&u_i_plus_v_i, &a_vec[i].to_big_int(), &order)
-            })
-            .fold(BigInt::zero(), |acc, x| BigInt::mod_sub(&acc, &x, &order));
+            .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc,&x,&order));
 
         let mut E_mat: Vec<BigInt> = Vec::new();
         let zero_vec = vec![BigInt::zero(); n];
@@ -396,9 +360,9 @@ impl RevelioPlus {
                 if byte[0]==1 {
                     E_mat.extend_from_slice(&zero_vec);
                     E_mat[n*index + i] = BigInt::one();
-                    let v_i = BigInt::mod_pow(&v_bn, &BigInt::from(index as u32), &order);
+                    let u_i = BigInt::mod_pow(&u_bn, &BigInt::from(index as u32), &order);
                     index = index + 1;
-                    v_i
+                    u_i
                 }
                 else {
                     BigInt::zero()
@@ -419,21 +383,18 @@ impl RevelioPlus {
             )
             .collect::<Vec<BigInt>>();
 
-        let a_vec_bn = (0..s)
-            .map(|i| a_vec[i].to_big_int()).collect::<Vec<BigInt>>();
         let r_vec_bn = (0..s)
             .map(|i| r_vec[i].to_big_int()).collect::<Vec<BigInt>>();
 
         // secret vectors
-        let mut c_L: Vec<BigInt> = vec![xi.clone(), xi_prime.clone(), eta.clone()];
+        let mut c_L: Vec<BigInt> = vec![xi.clone(), xi_prime.clone()];
         c_L.extend_from_slice(&e_hat.clone());
         c_L.push(BigInt::one());
         c_L.extend_from_slice(&E_mat.clone());
-        c_L.extend_from_slice(&a_vec_bn.clone());
         c_L.extend_from_slice(&r_vec_bn.clone());
 
         let mut c_R: Vec<BigInt> = vec![BigInt::zero(); p_len];
-        let rem_zero = vec![BigInt::zero(); 2*s];
+        let rem_zero = vec![BigInt::zero(); s];
         c_R.extend_from_slice(&E_mat_comp);
         c_R.extend_from_slice(&rem_zero);
 
@@ -474,7 +435,7 @@ impl RevelioPlus {
         let challenge_w_fe: FE = ECScalar::from(&challenge_w.to_big_int());
 
         // defining g_w
-        let mut g_vec_w: Vec<GE> = vec![*G, *Gt, *H];
+        let mut g_vec_w: Vec<GE> = vec![*G, *Gt];
         g_vec_w.extend_from_slice(&Y_hat_vec);
         g_vec_w.push(I_hat);
 
@@ -525,6 +486,265 @@ impl RevelioPlus {
         let theta_inv = constraint_vec.theta_inv.clone();
         let alpha = constraint_vec.alpha.clone();
         let mu = constraint_vec.mu.clone();
+        let delta = constraint_vec.delta.clone();
+
+
+        // TODO: DEBUG STARTS
+
+        // challenge powers
+        let u_s = (0..s)
+            .map(|i| {
+                BigInt::mod_pow(&u_bn, &BigInt::from(i as u32), &order)
+            })
+            .collect::<Vec<BigInt>>();
+
+        let y_s = (0..s)
+            .map(|i| {
+                BigInt::mod_pow(&y_bn, &BigInt::from(i as u32), &order)
+            })
+            .collect::<Vec<BigInt>>();
+        
+        let y_n = (0..n)
+            .map(|i| {
+                BigInt::mod_pow(&y_bn, &BigInt::from(i as u32), &order)
+            })
+            .collect::<Vec<BigInt>>();
+
+        let minus_y_n = (0..n)
+            .map(|i| {
+                BigInt::mod_sub(&BigInt::zero(), &y_n[i], &order)
+            })
+            .collect::<Vec<BigInt>>();
+
+        let y_sn = (0..sn)
+            .map(|i| {
+                BigInt::mod_pow(&y_bn, &BigInt::from(i as u32), &order)
+            })
+            .collect::<Vec<BigInt>>();
+
+        let us_kronecker_yn = (0..sn)
+            .map(|i| {
+                let j = i % n;
+                let k = i / n;
+                let y_j = BigInt::mod_pow(&y_bn, &BigInt::from(j as u32), &order);
+                let u_k = BigInt::mod_pow(&u_bn, &BigInt::from(k as u32), &order);
+                BigInt::mod_mul(&u_k, &y_j, &order)
+            })
+            .collect::<Vec<BigInt>>();
+        
+        let ys_kronecker_1n = (0..sn)
+            .map(|i| {
+                let k = i / n;
+                BigInt::mod_pow(&y_bn, &BigInt::from(k as u32), &order)
+            })
+            .collect::<Vec<BigInt>>();
+
+        let y_pow_s = BigInt::mod_pow(&y_bn, &BigInt::from(s as u32), &order);
+        
+        let v_minus_1 = BigInt::mod_sub(&v_bn, &BigInt::one(), &order);
+        let v_minus_1_us = (0..s)
+            .map(|i| {
+                BigInt::mod_mul(&v_minus_1, &u_s[i], &order)
+            })
+            .collect::<Vec<BigInt>>();
+        
+        let one_s_ys = (0..s)
+            .map(|i| {
+                y_s[i].clone()
+            })
+            .fold(y_pow_s.clone(), |acc, x| BigInt::mod_add(&acc, &x, &order));
+
+        // Define constraints fn(u,v,y) : part 1
+        let v0 = (0..t)
+            .map(|i| {
+                if i >= p_len && i < t-s {
+                    y_sn[i-p_len].clone()
+                }
+                else {
+                    // Solving the issue of theta by changing v0
+                    BigInt::one()
+                }
+            })
+            .collect::<Vec<BigInt>>();
+
+        let v1 = (0..t)
+            .map(|i| {
+                if i==0 {
+                    v_bn.clone()
+                }
+                else if i==1 {
+                    BigInt::one()
+                }
+                else if i >= t-s {
+                    v_minus_1_us[(i+s)-t].clone()
+                }
+                else {
+                    BigInt::zero()
+                }
+            })
+            .collect::<Vec<BigInt>>();
+
+        let v2 = (0..t)
+            .map(|i| {
+                if i >= 2 && i < n+2 {
+                    minus_y_n[i-2].clone()
+                }
+                else if i < t-s && i >= n+3{
+                    us_kronecker_yn[i - (n+3)].clone()
+                }
+                else {
+                    BigInt::zero()
+                }
+            })
+            .collect::<Vec<BigInt>>();
+
+        let v3 = (0..t)
+            .map(|i| {
+                if i == (n+2) {
+                    y_pow_s.clone()
+                }
+                else if i < t-s && i >= n+3{
+                    ys_kronecker_1n[i - (n+3)].clone()
+                }
+                else {
+                    BigInt::zero()
+                }
+            })
+            .collect::<Vec<BigInt>>();
+
+        let v4 = (0..t)
+            .map(|i| {
+                if i >= p_len && i < t-s {
+                    y_sn[i-p_len].clone()
+                }
+                else {
+                    BigInt::zero()
+                }
+            })
+            .collect::<Vec<BigInt>>();
+
+        // ce 0
+        let ce0 = (0..t).map(|i| {
+            let cri_v0i = BigInt::mod_mul(&c_R[i], &v0[i], &order);
+            BigInt::mod_mul(&c_L[i], &cri_v0i, &order)
+        })
+        .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc, &x, &order));
+
+        assert_eq!(ce0, BigInt::zero(), "ce0 fails!");
+
+        // ce3
+        let ce3 = (0..t).map(|i| {
+            BigInt::mod_mul(&c_L[i], &v3[i], &order)
+        })
+        .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc, &x, &order));
+
+        assert_eq!(ce3, one_s_ys, "ce3 fails!");
+
+        // ce4
+        let ce4 = (0..t).map(|i| {
+            let cri_cli = BigInt::mod_add(&c_R[i], &c_L[i], &order);
+            let cri_cli_m1 = BigInt::mod_sub(&cri_cli, &BigInt::one(), &order);
+            BigInt::mod_mul(&cri_cli_m1, &v4[i], &order)
+        })
+        .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc, &x, &order));
+
+        assert_eq!(ce4, BigInt::zero(), "ce4 fails!");
+
+        // ce1
+        let ce1 = (0..t).map(|i| {
+            let ans = BigInt::mod_mul(&c_L[i], &v1[i], &order);
+            ans
+        })
+        .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc, &x, &order));
+
+        assert_eq!(ce1, BigInt::zero(), "ce1 fails");
+
+        // ce2
+        let ce2 = (0..t).map(|i| {
+            BigInt::mod_mul(&c_L[i], &v2[i], &order)
+        })
+        .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc, &x, &order));
+
+        assert_eq!(ce2, BigInt::zero(), "ce2 fails!");
+
+
+        // calc other constraints
+        let z2 = BigInt::mod_mul(&z_bn, &z_bn, &order);
+        let z3 = BigInt::mod_mul(&z2, &z_bn, &order);
+        let z4 = BigInt::mod_mul(&z2, &z2, &order);
+        let theta1 = v0.clone();
+        let theta_inv1 = (0..t).map(|i| BigInt::mod_inv(&theta1[i], &order)).collect::<Vec<BigInt>>();
+
+        let nu1 = (0..t).map(|i| {
+            BigInt::mod_mul(&z4, &v4[i], &order)
+        }).collect::<Vec<BigInt>>();
+
+        let mu_1 = (0..t).map(|i| {
+            let mu1 = BigInt::mod_mul(&z_bn, &v1[i], &order);
+            let mu2 = BigInt::mod_mul(&z2, &v2[i], &order);
+            let mu3 = BigInt::mod_mul(&z3, &v3[i], &order);
+            let mu4 = BigInt::mod_mul(&z4, &v4[i], &order);
+            let mus1 = BigInt::mod_add(&mu1, &mu2, &order);
+            let mus2 = BigInt::mod_add(&mu3, &mu4, &order);
+            BigInt::mod_add(&mus1, &mus2, &order)
+        }).collect::<Vec<BigInt>>();
+
+        let alpha1 = (0..t).map(|i| {
+            BigInt::mod_mul(&theta_inv1[i], &nu1[i], &order)
+        }).collect::<Vec<BigInt>>();
+
+        let one_s_ys_z3 = BigInt::mod_mul(&one_s_ys, &z3, &order);
+        let delta1 = (0..t).map(|i| {
+            let alpmu1 = BigInt::mod_mul(&alpha1[i], &mu_1[i], &order);
+            BigInt::mod_add(&alpmu1, &nu1[i], &order)
+        }).fold(one_s_ys_z3.clone(), |acc, x| BigInt::mod_add(&acc, &x, &order));
+
+        let ones = (0..t).map(|i| {
+            BigInt::mod_mul(&theta_inv1[i], &theta1[i], &order)
+        }).collect::<Vec<BigInt>>();
+
+        assert_eq!(ones, vec![BigInt::one(); t], "here1.");
+
+        // step by step constraints
+        let step1_1 = (0..t).map(|i| {
+            BigInt::mod_mul(&c_L[i], &mu_1[i], &order)
+        })
+        .fold(ce0.clone(), |acc, x| BigInt::mod_add(&acc, &x, &order));
+        let step1_2 = (0..t).map(|i| {
+            BigInt::mod_mul(&c_R[i], &nu1[i], &order)
+        })
+        .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc, &x, &order));
+
+        let step1_L = BigInt::mod_add(&step1_1, &step1_2, &order);
+
+        let step1_R = (0..t).map(|i| {
+            nu1[i].clone()
+        })
+        .fold(one_s_ys_z3.clone(), |acc, x| BigInt::mod_add(&acc, &x, &order));
+
+        assert_eq!(step1_L, step1_R, "Setp1 fails!");
+
+        // test 2
+        let step2_1 = (0..t).map(|i| {
+            BigInt::mod_mul(&c_R[i], &theta1[i], &order)
+        }).collect::<Vec<BigInt>>();
+        let step2_2 = (0..t).map(|i| {
+            BigInt::mod_mul(&nu1[i], &theta_inv1[i], &order)
+        }).collect::<Vec<BigInt>>();
+        let step2_3 = (0..t).map(|i| {
+            BigInt::mod_mul(&step2_1[i], &step2_2[i], &order)
+        })
+        .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc, &x, &order));
+        let step2_4 = (0..t).map(|i| {
+            BigInt::mod_mul(&step2_1[i], &alpha1[i], &order)
+        })
+        .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc, &x, &order));
+
+        assert_eq!(step2_3, step1_2, "fails 1");
+        assert_eq!(step2_4, step1_2, "fails 2");
+
+        // TODO: DEBUG ENDS
+
         
         // calculate t2, t1, t0
         let t2 = (0..t)
@@ -534,7 +754,7 @@ impl RevelioPlus {
                 let sR_sL = BigInt::mod_mul(&sR_bn, &sL_bn, &order);
                 BigInt::mod_mul(&sR_sL, &theta[i], &order)
             })
-            .fold(BigInt::zero(), |acc, x| acc + x);
+            .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc, &x, &order));
         
         let t1 = (0..t)
             .map(|i| {
@@ -588,6 +808,41 @@ impl RevelioPlus {
             let Lp_iRp_i = BigInt::mod_mul(x.0, x.1, &order);
             BigInt::mod_add(&acc, &Lp_iRp_i, &order)
         });     
+
+        // TODO: DEBUG
+
+        // compute t0
+        let t0_L = (0..t)
+            .map(|i| {
+                BigInt::mod_add(&c_L[i], &alpha[i], &order)
+            })
+            .collect::<Vec<BigInt>>();
+
+        let t0_R = (0..t)
+            .map(|i| {
+                let theta_cR = BigInt::mod_mul(&theta[i], &c_R[i], &order);
+                BigInt::mod_add(&mu[i], &theta_cR, &order)
+            })
+            .collect::<Vec<BigInt>>();
+
+        let t0 = t0_L.iter().zip(&t0_R).fold(BigInt::zero(), |acc, x| {
+                let elem = BigInt::mod_mul(x.0, x.1, &order);
+                BigInt::mod_add(&acc, &elem, &order)
+            });
+
+        assert_eq!(delta, delta1, "delat fails!");
+        assert_eq!(t0, delta1, "t0 first fails!");
+        assert_eq!(t0, delta, "t0 fails!");
+        
+        // compute t0 + xt_1 + x^2 t_2
+        let x_t1 = BigInt::mod_mul(&challenge_x.to_big_int(), &t1, &order);
+        let x2_t2 = BigInt::mod_mul(&challenge_x_square.to_big_int(), &t2, &order);
+        let x_t1_plus_x2_t2 = BigInt::mod_add(&x_t1, &x2_t2, &order);
+        let t_hat_comp = BigInt::mod_add(&x_t1_plus_x2_t2, &delta, &order);
+
+        assert_eq!(t_hat, t_hat_comp, "t_hat fails!");
+
+        // TODO: DEBUG ENDS
 
         // Running inner product argument
         let t_hat_fe: FE = ECScalar::from(&t_hat);
@@ -679,8 +934,8 @@ impl RevelioPlus {
         // vector lengths
         let n = C_vec.len();
         let s = self.I_vec.len();
-        let t = s*n + n + 2*s + 4;
-        let p_len = n+4;
+        let t = s*n + n + s + 3;
+        let p_len = n+3;
         
         // other prelims
         let order = FE::q();
@@ -760,16 +1015,19 @@ impl RevelioPlus {
         let Y_hat: &[GE] = C_vec;
         let Y_hat_vec = Y_hat.to_vec();
 
+        let minus1 = BigInt::mod_sub(&BigInt::zero(), &BigInt::one(), &order);
+        let I0_inv = self.I_vec[0] * &(ECScalar::from(&minus1));
         let I_hat: GE = (1..s)
             .map(|i| {
                 let u_i = BigInt::mod_pow(&u_bn, &BigInt::from(i as u32), &order);
-                let u_i_fe: FE = ECScalar::from(&u_i);
+                let minus_ui = BigInt::mod_sub(&BigInt::zero(), &u_i, &order);
+                let u_i_fe: FE = ECScalar::from(&minus_ui);
                 self.I_vec[i] * &u_i_fe
             })
-            .fold(self.I_vec[0], |acc, x| acc.add_point(&x.get_element())); 
+            .fold(I0_inv, |acc, x| acc.add_point(&x.get_element()));
             
         // defining g_w
-        let mut g_vec_w: Vec<GE> = vec![*G, *Gt, *H];
+        let mut g_vec_w: Vec<GE> = vec![*G, *Gt];
         g_vec_w.extend_from_slice(&Y_hat_vec);
         g_vec_w.push(I_hat);
 
@@ -1006,7 +1264,7 @@ mod tests {
         let n=8;
         let s=1;
         let sn = s * n;
-        let t = sn + n + 2*s + 4;
+        let t = sn + n + s + 3;
         let amt_bit_range = 8;
         let one = BigInt::from(1);
         let N = (t as u64).next_power_of_two();
@@ -1038,7 +1296,7 @@ mod tests {
         let H_prime = generate_random_point(&Converter::to_vec(&hash2));   
 
         // generate p_vec, g_prime_vec, h_vec
-        let p_len = n+4;
+        let p_len = n+3;
         let g_prime_len = t-p_len;
         let h_len = t;
 
@@ -1130,7 +1388,7 @@ mod tests {
     pub fn test_revelio_plus_helper(n: usize, s: usize){
         
         let sn = s * n;
-        let t = sn + n + 2*s + 4;
+        let t = sn + n + s + 3;
         let amt_bit_range = 8;
         let one = BigInt::from(1);
         let N = t.next_power_of_two();
@@ -1162,7 +1420,7 @@ mod tests {
         let H_prime = generate_random_point(&Converter::to_vec(&hash2));   
 
         // generate p_vec, g_prime_vec, h_vec
-        let p_len = n+4;
+        let p_len = n+3;
         let g_prime_len = t-p_len;
         let h_len = t;
 
@@ -1267,7 +1525,7 @@ mod tests {
     pub fn rPlus_simulation_helper(n: usize, s: usize){
         
         let sn = s * n;
-        let t = sn + n + 2*s + 4;
+        let t = sn + n + s + 3;
         let amt_bit_range = 8;
         let one = BigInt::from(1);
         let N = t.next_power_of_two();
@@ -1299,7 +1557,7 @@ mod tests {
         let H_prime = generate_random_point(&Converter::to_vec(&hash2));   
 
         // generate p_vec, g_prime_vec, h_vec
-        let p_len = n+4;
+        let p_len = n+3;
         let g_prime_len = t-p_len;
         let h_len = t;
 
