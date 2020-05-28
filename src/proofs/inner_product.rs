@@ -348,7 +348,7 @@ mod tests {
     use curv::BigInt;
     use curv::{FE, GE};
     use proofs::inner_product::InnerProductArg;
-    use proofs::revelio_plus::generate_random_point;
+    use proofs::revelio_bp::generate_random_point;
 
     fn test_helper(n: usize) {
         let KZen: &[u8] = &[75, 90, 101, 110];

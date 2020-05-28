@@ -4,7 +4,7 @@
 
 Copyright 2018 by Suyash Bagad, Saravanan Vijayakumaran
 
-This file is part of revelioPlus library
+This file is part of RevelioBP library
 (<add a link to github>)
 
 */
@@ -18,7 +18,7 @@ use curv::elliptic::curves::traits::*;
 use curv::BigInt;
 use curv::{FE, GE};
 use proofs::inner_product::InnerProductArg;
-use Errors::{self, RevelioPlusError};
+use Errors::{self, RevelioBPError};
 use rand::distributions::{Distribution, Uniform};
 use std::cmp;
 
@@ -253,7 +253,7 @@ impl Constraints{
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct RevelioPlus {
+pub struct RevelioBP {
     I_vec: Vec<GE>,
     C_assets: GE,
     A: GE,
@@ -267,7 +267,7 @@ pub struct RevelioPlus {
     constraint_vec: Constraints,
 }
 
-impl RevelioPlus {
+impl RevelioBP {
     pub fn prove(
         // crs
         G: &GE,
@@ -285,7 +285,7 @@ impl RevelioPlus {
         E_vec: &[BigInt],
         a_vec: &[FE],
         r_vec: &[FE], 
-    ) -> RevelioPlus {
+    ) -> RevelioBP {
 
         // number of outputs on the blockchain
         let n: usize = C_vec.len();
@@ -606,7 +606,7 @@ impl RevelioPlus {
         let inner_product_proof =
             InnerProductArg::prove(&g_vec, &h_vec_long, &Gx, &P, &a, &b, L_vec, R_vec);
 
-        return RevelioPlus {
+        return RevelioBP {
             I_vec,
             C_assets,
             A,
@@ -793,7 +793,7 @@ impl RevelioPlus {
         if verify.is_ok() && C_assets_comp==self.C_assets && left_side==right_side{
             Ok(())
         } else {
-            Err(RevelioPlusError)
+            Err(RevelioBPError)
         }
     }
 
@@ -958,8 +958,8 @@ mod tests {
     use curv::elliptic::curves::traits::*;
     use curv::BigInt;
     use curv::{FE, GE};
-    use proofs::revelio_plus::generate_random_point;
-    use proofs::revelio_plus::RevelioPlus;
+    use proofs::revelio_bp::generate_random_point;
+    use proofs::revelio_bp::RevelioBP;
     use rand::distributions::{Distribution, Uniform};
     use std::cmp;
     use time::PreciseTime;
@@ -1086,7 +1086,7 @@ mod tests {
             })
             .collect::<Vec<BigInt>>();
 
-        let revelio_test = RevelioPlus::prove(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut, &E_vec, &a_vec, &r_vec);
+        let revelio_test = RevelioBP::prove(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut, &E_vec, &a_vec, &r_vec);
         let result = revelio_test.verify(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut);
         assert!(result.is_ok());
     }
@@ -1222,7 +1222,7 @@ mod tests {
             })
             .collect::<Vec<BigInt>>();
         
-        let revelio_test = RevelioPlus::prove(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut, &E_vec, &a_vec, &r_vec);
+        let revelio_test = RevelioBP::prove(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut, &E_vec, &a_vec, &r_vec);
         let result = revelio_test.verify(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut);
         
         assert!(result.is_ok());
@@ -1361,7 +1361,7 @@ mod tests {
         
         println!("({}, {})", n, s);
         let start = PreciseTime::now();
-        let revelio_test = RevelioPlus::prove(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut, &E_vec, &a_vec, &r_vec);
+        let revelio_test = RevelioBP::prove(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut, &E_vec, &a_vec, &r_vec);
         let end = PreciseTime::now();
         println!("{:?}", start.to(end));
 

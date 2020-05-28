@@ -1,14 +1,14 @@
 #![allow(non_snake_case)]
 
 extern crate structopt;
-extern crate revelioPlus;
+extern crate revelioBP;
 
 use structopt::StructOpt;
 use std::time::{Instant, Duration};
-use revelioPlus::proofs::revelio_plus::RevelioPlus;
+use revelioBP::proofs::revelio_bp::RevelioBP;
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "revelio_plus", about = "RevelioPlus proof generation simulator using curv library.")]
+#[structopt(name = "revelioBP", about = "RevelioPlus proof generation simulator using curv library.")]
 struct Opt {
   //#[structopt(short = "a", long = "anonsize")]
   anon_list_size: usize,
@@ -20,7 +20,7 @@ struct Opt {
 
 fn main() {
     // 
-    // cargo run --release --bin revelio_plus_bin 1000 100 -n 10
+    // cargo run --release --bin revelio_bp_bin 1000 100 -n 10
     //
     let opt = Opt::from_args();
 
@@ -32,14 +32,14 @@ fn main() {
     let mut total_gen_proof_duration = Duration::new(0, 0);
     let mut total_ver_proof_duration = Duration::new(0, 0);
 
-    let (G, H, Gt, H_prime, p_vec, g_prime_vec, h_vec, g_vec_append, h_vec_append, C_vec_mut, E_vec, a_vec, r_vec) = RevelioPlus::gen_params(opt.anon_list_size, opt.own_list_size);
+    let (G, H, Gt, H_prime, p_vec, g_prime_vec, h_vec, g_vec_append, h_vec_append, C_vec_mut, E_vec, a_vec, r_vec) = RevelioBP::gen_params(opt.anon_list_size, opt.own_list_size);
 
     let sim_start = Instant::now();
 
     for _i in 0..num_iter {    
     
         gen_proof_start = Instant::now();
-        let revelio_plus_proof = RevelioPlus::prove(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut, &E_vec, &a_vec, &r_vec);
+        let revelio_plus_proof = RevelioBP::prove(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut, &E_vec, &a_vec, &r_vec);
         gen_proof_end = Instant::now();
         total_gen_proof_duration += gen_proof_end.duration_since(gen_proof_start);
   

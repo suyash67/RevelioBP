@@ -24,5 +24,5 @@ pub mod proofs;
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
 pub enum Errors {
     InnerProductError,
-    RevelioPlusError,
+    RevelioBPError,
 }
