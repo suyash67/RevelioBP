@@ -18,7 +18,7 @@ cargo run --release --bin revelio_bp_bin 204800 20 -n 1
 # Plot 1: Gen and Ver times vs s (for n=1000)
 # Estimated time to run on an Intel® Core™ i7-5500U CPU @ 2.40GHz × 1
 # => 1 hour 
-cargo build release
+cargo build --release
 cargo run --release --bin revelio_bp_bin 1000 10 -n 1
 cargo run --release --bin revelio_bp_bin 1000 20 -n 1
 cargo run --release --bin revelio_bp_bin 1000 50 -n 1
