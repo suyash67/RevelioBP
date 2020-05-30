@@ -1,0 +1,117 @@
+=>  RevelioBP (master) $ bash run-reveliobp.sh
+    Finished release [optimized] target(s) in 0.36s
+    Finished release [optimized] target(s) in 0.06s
+     Running `target/release/revelio_bp_bin 102400 20 -n 1`
+Total simulation time = 3340.288718163s
+Options = Opt { anon_list_size: 102400, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 2414.381162139s
+Average proof verification time = 924.230205891s
+    Finished release [optimized] target(s) in 0.40s
+     Running `target/release/revelio_bp_bin 204800 20 -n 1`
+Total simulation time = 6938.883869804s
+Options = Opt { anon_list_size: 204800, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 4881.326161759s
+Average proof verification time = 2051.044687829s
+    Finished release [optimized] target(s) in 0.41s
+     Running `target/release/revelio_bp_bin 100 20 -n 1`
+Total simulation time = 3.249194751s
+Options = Opt { anon_list_size: 100, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 2.366189581s
+Average proof verification time = 882.191521ms
+    Finished release [optimized] target(s) in 0.07s
+     Running `target/release/revelio_bp_bin 200 20 -n 1`
+Total simulation time = 6.462622086s
+Options = Opt { anon_list_size: 200, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 4.630946752s
+Average proof verification time = 1.82973696s
+    Finished release [optimized] target(s) in 0.06s
+     Running `target/release/revelio_bp_bin 400 20 -n 1`
+Total simulation time = 13.012001267s
+Options = Opt { anon_list_size: 400, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 9.514723031s
+Average proof verification time = 3.493912175s
+    Finished release [optimized] target(s) in 0.06s
+     Running `target/release/revelio_bp_bin 800 20 -n 1`
+Total simulation time = 25.759559182s
+Options = Opt { anon_list_size: 800, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 18.615104333s
+Average proof verification time = 7.136606278s
+    Finished release [optimized] target(s) in 0.07s
+     Running `target/release/revelio_bp_bin 1600 20 -n 1`
+Total simulation time = 51.669953591s
+Options = Opt { anon_list_size: 1600, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 37.278583437s
+Average proof verification time = 14.376667369s
+    Finished release [optimized] target(s) in 0.06s
+     Running `target/release/revelio_bp_bin 3200 20 -n 1`
+Total simulation time = 104.155038662s
+Options = Opt { anon_list_size: 3200, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 75.656540673s
+Average proof verification time = 28.465190762s
+    Finished release [optimized] target(s) in 0.07s
+     Running `target/release/revelio_bp_bin 6400 20 -n 1`
+Total simulation time = 209.326165516s
+Options = Opt { anon_list_size: 6400, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 151.230516928s
+Average proof verification time = 58.026823428s
+    Finished release [optimized] target(s) in 0.09s
+     Running `target/release/revelio_bp_bin 12800 20 -n 1`
+Total simulation time = 419.416488895s
+Options = Opt { anon_list_size: 12800, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 305.190632491s
+Average proof verification time = 114.087458197s
+    Finished release [optimized] target(s) in 0.07s
+     Running `target/release/revelio_bp_bin 25600 20 -n 1`
+Total simulation time = 832.170825107s
+Options = Opt { anon_list_size: 25600, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 600.199410093s
+Average proof verification time = 231.706832017s
+    Finished release [optimized] target(s) in 0.14s
+     Running `target/release/revelio_bp_bin 51200 20 -n 1`
+Total simulation time = 1704.734163286s
+Options = Opt { anon_list_size: 51200, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 1248.001817903s
+Average proof verification time = 456.178421607s
+    Finished release [optimized] target(s) in 0.36s
+    Finished release [optimized] target(s) in 0.07s
+     Running `target/release/revelio_bp_bin 1000 10 -n 1`
+Total simulation time = 15.116122913s
+Options = Opt { anon_list_size: 1000, own_list_size: 10, num_iter: 1 }
+Average proof generation time = 10.995598152s
+Average proof verification time = 4.115595951s
+    Finished release [optimized] target(s) in 0.07s
+     Running `target/release/revelio_bp_bin 1000 20 -n 1`
+Total simulation time = 34.593506317s
+Options = Opt { anon_list_size: 1000, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 25.035010296s
+Average proof verification time = 9.546856422s
+    Finished release [optimized] target(s) in 0.08s
+     Running `target/release/revelio_bp_bin 1000 50 -n 1`
+Total simulation time = 64.569845743s
+Options = Opt { anon_list_size: 1000, own_list_size: 50, num_iter: 1 }
+Average proof generation time = 46.588857043s
+Average proof verification time = 17.956225444s
+    Finished release [optimized] target(s) in 0.06s
+     Running `target/release/revelio_bp_bin 1000 100 -n 1`
+Total simulation time = 132.400305846s
+Options = Opt { anon_list_size: 1000, own_list_size: 100, num_iter: 1 }
+Average proof generation time = 97.238516003s
+Average proof verification time = 35.11568297s
+    Finished release [optimized] target(s) in 0.07s
+     Running `target/release/revelio_bp_bin 1000 200 -n 1`
+Total simulation time = 250.985651737s
+Options = Opt { anon_list_size: 1000, own_list_size: 200, num_iter: 1 }
+Average proof generation time = 181.149028241s
+Average proof verification time = 69.732898515s
+    Finished release [optimized] target(s) in 0.08s
+     Running `target/release/revelio_bp_bin 1000 500 -n 1`
+Total simulation time = 580.312383773s
+Options = Opt { anon_list_size: 1000, own_list_size: 500, num_iter: 1 }
+Average proof generation time = 408.513440292s
+Average proof verification time = 171.558730232s
+    Finished release [optimized] target(s) in 0.12s
+     Running `target/release/revelio_bp_bin 1000 800 -n 1`
+Total simulation time = 1017.375785905s
+Options = Opt { anon_list_size: 1000, own_list_size: 800, num_iter: 1 }
+Average proof generation time = 734.569507661s
+Average proof verification time = 282.424363578s
