@@ -1,19 +1,144 @@
+//  -*- mode: rust; -*-
+// 
+// This file is part of revelioBP library.
+// Copyright (c) 2020 Suyash Bagad
+// See LICENSE for licensing information.
+//
+// Authors:
+// - Suyash Bagad <suyashbagad@iitb.ac.in>
+// 
+// NOTE:
+// 
+// The `InnerProductArg` struct is being used as-is from the 
+// bulletproof library (https://github.com/KZen-networks/bulletproof)
+// copyrighted by Kzen Networks. We modify and use it under the GPL
+// license of bulletproof. Following are the copyright details of 
+// bulletproof library:
+// 
+// ------------------------------------------------------------------
+// Copyright 2018 by Kzen Networks
+//
+// This file is part of bulletproof library
+// (https://github.com/KZen-networks/bulletproof)
+//
+// bulletproof is free software: you can redistribute
+// it and/or modify it under the terms of the GNU General Public
+// License as published by the Free Software Foundation, either
+// version 3 of the License, or (at your option) any later version.
+//
+// @license GPL-3.0+ <https://github.com/KZen-networks/bulletproof/blob/master/LICENSE>
+// ------------------------------------------------------------------
+//
+// The function `fast_verify` in the `InnerProductArg` struct is written 
+// by Suyash Bagad to enhance inner product verification using multi-exponentiation.
+// 
+// The test `make_ipp_non_power_2` is written by Suyash Bagad to test
+// inner product argument for non-powers of 2 vectors.
+
+
+// We allow non snake_case names because curve points (generator vectors, etc) 
+// are denoted in upper case and scalar vectors are denoted in small case.
 #![allow(non_snake_case)]
 
-/*
+//!
+//! An implementation of improved inner product argument
+//! based on the [Bulletproofs](https://eprint.iacr.org/2017/1066.pdf) paper.
+//! The proof size is $2\lceil \text{log}_2n \rceil$ curve points along with 2 field elements,
+//! where $n$ is the size of the secret vectors.
+//! 
+//! The `InnerProductArg` struct is used from the Kzen-Networks' 
+//! [bulletproof](https://github.com/KZen-networks/bulletproof) library
+//! in accordance with the GPL licence of 
+//! [bulletproof](https://github.com/KZen-networks/bulletproof) library.
+//! 
+//! We modify the struct to implement the function `fast_verify`
+//! using a single multiexponentiation check to reduce the verifier computation cost
+//! by a factor of almost $2$.
+//! 
+//! We also demonstrate usage of inner product protocol for secret vectors of size
+//! a non-power of 2 in the test `make_ipp_non_power_2`.
+//! 
+//! Read an excellent [write up](https://doc-internal.dalek.rs/bulletproofs/inner_product_proof/index.html#inner-product-argument-protocol) 
+//! of the inner product argument as prover's and verifier's work.
+//! 
+//! # Sample usage
+//! 
+//! ```
+//! let seed: &[u8] = &[75, 90, 101, 110];
+//! let label = BigInt::from(seed);
+//!
+//! let g_vec = (0..n)
+//!     .map(|i| {
+//!         let label_i = BigInt::from(i as u32) + &label;
+//!         let hash_i = HSha512::create_hash(&[&label_i]);
+//!         generate_random_point(&Converter::to_vec(&hash_i))
+//!     })
+//!     .collect::<Vec<GE>>();
+//! 
+//! // can run in parallel to g_vec:
+//! let h_vec = (0..n)
+//!     .map(|i| {
+//!         let label_j = BigInt::from(n as u32) + BigInt::from(i as u32) + &label;
+//!         let hash_j = HSha512::create_hash(&[&label_j]);
+//!         generate_random_point(&Converter::to_vec(&hash_j))
+//!     })
+//!     .collect::<Vec<GE>>();
+//! 
+//! let label = BigInt::from(1);
+//! let hash = HSha512::create_hash(&[&label]);
+//! let Gx = generate_random_point(&Converter::to_vec(&hash));
+//! 
+//! let a: Vec<_> = (0..n).map(|_| ECScalar::new_random().to_big_int()).collect();
+//! let b: Vec<_> = (0..n).map(|_| ECScalar::new_random().to_big_int()).collect();
+//! let c = super::inner_product(&a, &b);
+//! 
+//! let y: FE = ECScalar::new_random();
+//! let order = FE::q();
+//! let yi = (0..n)
+//!     .map(|i| BigInt::mod_pow(&y.to_big_int(), &BigInt::from(i as u32), &order))
+//!     .collect::<Vec<BigInt>>();
+//! 
+//! let yi_inv = (0..n)
+//!     .map(|i| {
+//!         let yi_fe: FE = ECScalar::from(&yi[i]);
+//!         yi_fe.invert()
+//!     })
+//!     .collect::<Vec<FE>>();
+//! 
+//! let hi_tag = (0..n).map(|i| &h_vec[i] * &yi_inv[i]).collect::<Vec<GE>>();
+//! 
+//! // P = <a * G> + <b_L * H_R> + c * ux
+//! let c_fe: FE = ECScalar::from(&c);
+//! let ux_c: GE = &Gx * &c_fe;
+//! let a_G = (0..n)
+//!     .map(|i| {
+//!         let ai: FE = ECScalar::from(&a[i]);
+//!         &g_vec[i] * &ai
+//!     })
+//!     .fold(ux_c, |acc, x: GE| acc + x as GE);
+//! let P = (0..n)
+//!     .map(|i| {
+//!         let bi: FE = ECScalar::from(&b[i]);
+//!         &hi_tag[i] * &bi
+//!     })
+//!     .fold(a_G, |acc, x: GE| acc + x as GE);
+//! 
+//! let L_vec = Vec::with_capacity(n);
+//! let R_vec = Vec::with_capacity(n);
+//! let ipp = InnerProductArg::prove(&g_vec, &hi_tag, &Gx, &P, &a, &b, L_vec, R_vec);
+//! 
+//! // Conventional verification
+//! let verifier1 = ipp.verify(&g_vec, &hi_tag, &Gx, &P);
+//! 
+//! // Faster verification using multiexponentiation
+//! let verifier2 = ipp.fast_verify(&g_vec, &hi_tag, &Gx, &P);
+//! 
+//! assert!(verifier1.is_ok());
+//! assert!(verifier2.is_ok());
+//! ```
+//! 
 
-Copyright 2018 by Kzen Networks
 
-This file is part of bulletproof library
-(https://github.com/KZen-networks/bulletproof)
-
-bulletproof is free software: you can redistribute
-it and/or modify it under the terms of the GNU General Public
-License as published by the Free Software Foundation, either
-version 3 of the License, or (at your option) any later version.
-
-@license GPL-3.0+ <https://github.com/KZen-networks/bulletproof/blob/master/LICENSE>
-*/
 
 // based on the paper: https://eprint.iacr.org/2017/1066.pdf
 use curv::arithmetic::traits::Modulo;
@@ -34,6 +159,15 @@ pub struct InnerProductArg {
 }
 
 impl InnerProductArg {
+    ///
+    /// Constructs log-sized inner product argument.
+    /// 
+    /// Common reference string: $\textbf{G}, \textbf{H} \in \mathbb{G}^{n}, \ P, \text{ux} \in \mathbb{G}, \ n = 2^m$ for some $m \in \mathbb{Z}_{+}$
+    /// 
+    /// Witness: $\textbf{a}, \textbf{b} \in \mathbb{Z}_q^n$
+    /// 
+    /// Statement: $P = \langle \textbf{a},\textbf{G} \rangle + \langle \textbf{b},\textbf{H} \rangle + \langle \textbf{a},\textbf{b} \rangle \cdot \text{ux}$ 
+    /// 
     pub fn prove(
         G: &[GE],
         H: &[GE],
@@ -169,6 +303,10 @@ impl InnerProductArg {
         }
     }
 
+    ///
+    /// Returns Ok() if the given inner product satisfies the verification equations,
+    /// else returns `InnerProductError`.
+    /// 
     pub fn verify(&self, g_vec: &[GE], hi_tag: &[GE], ux: &GE, P: &GE) -> Result<(), Errors> {
         let G = &g_vec[..];
         let H = &hi_tag[..];
@@ -237,6 +375,13 @@ impl InnerProductArg {
         }
     }
 
+    ///
+    /// Returns Ok() if the given inner product satisfies the verification equations,
+    /// else returns `InnerProductError`.
+    /// 
+    /// Uses a single multiexponentiation (multiscalar multiplication in additive notation)
+    /// check to verify an inner product proof. 
+    /// 
     pub fn fast_verify(&self, g_vec: &[GE], hi_tag: &[GE], ux: &GE, P: &GE)
     -> Result<(), Errors> {
         let G = &g_vec[..];
@@ -324,6 +469,9 @@ impl InnerProductArg {
     }
 }
 
+///
+/// Computes inner product of two scalar vectors.
+/// 
 fn inner_product(a: &[BigInt], b: &[BigInt]) -> BigInt {
     assert_eq!(
         a.len(),

@@ -1,15 +1,17 @@
-#![allow(non_snake_case)]
-
-/*
-
-Copyright 2018 by Suyash Bagad, Saravanan Vijayakumaran
-
-This file is part of RevelioBP library
-(<add a link to github>)
-
-*/
+//  -*- mode: rust; -*-
+// 
+// This file is part of revelioBP library.
+// Copyright (c) 2020 Suyash Bagad
+// See LICENSE for licensing information.
+//
+// Authors:
+// - Suyash Bagad <suyashbagad@iitb.ac.in>
+// 
 
 // based on the paper: <link to paper>
+
+#![allow(non_snake_case)]
+
 use curv::arithmetic::traits::{Converter, Modulo, Samplable};
 use curv::cryptographic_primitives::hashing::hash_sha256::HSha256;
 use curv::cryptographic_primitives::hashing::traits::*;
@@ -604,7 +606,7 @@ impl RevelioBP {
         let L_vec = Vec::with_capacity(n);
         let R_vec = Vec::with_capacity(n);
         let inner_product_proof =
-            InnerProductArg::prove(&g_vec, &h_vec_long, &Gx, &P, &a, &b, L_vec, R_vec);
+            InnerProductArg::prove(&g_vec[..], &h_vec_long, &Gx, &P, &a, &b, L_vec, R_vec);
 
         return RevelioBP {
             I_vec,

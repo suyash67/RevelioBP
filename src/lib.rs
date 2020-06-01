@@ -18,7 +18,9 @@ extern crate itertools;
 extern crate rand;
 extern crate time;
 
-
+///
+/// The `proofs` module contains the API for constructing [RevelioBP](revelio_bp/index.html) and [Improved Inner Product](inner_product/index.html) protocols. 
+/// 
 pub mod proofs;
 
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
