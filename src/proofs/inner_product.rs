@@ -166,7 +166,7 @@ impl InnerProductArg {
     /// 
     /// Witness: $\textbf{a}, \textbf{b} \in \mathbb{Z}_q^n$
     /// 
-    /// Statement: $P = \langle \textbf{a},\textbf{G} \rangle + \langle \textbf{b},\textbf{H} \rangle + \langle \textbf{a},\textbf{b} \rangle \cdot \text{ux}$ 
+    /// Statement: $P = \textbf{G}^{\textbf{a}} \cdot \textbf{H}^{\textbf{b}} \cdot \text{ux}^{\langle \textbf{a},\textbf{b} \rangle}$
     /// 
     pub fn prove(
         G: &[GE],

@@ -8,6 +8,12 @@
 // - Suyash Bagad <suyashbagad@iitb.ac.in>
 // 
 
+//!
+//! An implementation of improved inner product argument
+//! based on the paper titled 
+//! [Performance Tradeoffs in MimbleWimble Proofs of Reserves](https://to_be_added.com).
+//!
+
 // based on the paper: <link to paper>
 
 #![allow(non_snake_case)]
