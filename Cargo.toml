@@ -4,6 +4,18 @@ version = "0.1.0"
 authors = [
     "Suyash Bagad <suyashbagad@iitb.ac.in>",
 ]
+edition = "rustc 1.44.0-nightly"
+readme = "README.md"
+license = "MIT"
+license-file = "LICENSE"
+repository = "https://github.com/suyash67/RevelioBP"
+categories = ["cryptography"]
+keywords = ["cryptography", "cryptocurrencies", "proof-of-reserves", "grin", "mimblewimble"]
+description = "A Rust implementation of RevelioBP - a proof of reserves protocol for mimblewimble cryptocurrencies on curve secp256k1."
+exclude = [".gitignore"]
+    
+
+
 
 [lib]
 crate-type = ["lib"]
