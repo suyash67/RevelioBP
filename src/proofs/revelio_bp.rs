@@ -9,10 +9,151 @@
 // 
 
 //!
-//! An implementation of improved inner product argument
+//! An implementation of RevelioBP proof of reserves protocol
 //! based on the paper titled 
 //! [Performance Tradeoffs in MimbleWimble Proofs of Reserves](https://to_be_added.com).
 //!
+//! ## Sample Usage
+//! 
+//! ```
+//! // `s` is the number of exchange owned outputs
+//! // `n` is the UTXO set size
+//! // `a_vec` and `r_vec` are respectively the amount and secret key vectors
+//! // `E_mat` is the index vector of exchange-owned outputs. 
+//! 
+//! let sn = s * n;
+//! let t = sn + n + s + 3;
+//! let amt_bit_range = 8;
+//! let one = BigInt::from(1);
+//! let N = t.next_power_of_two();
+//! let res = N-t;
+//! 
+//! // sigma_t equals the block height 
+//! let block_ht: u32 = 100; 
+//! 
+//! // generate random amounts in range {0,..,2^{amt_bit_range}}
+//! let range = BigInt::from(2).pow(amt_bit_range as u32);
+//! let a_vec = (0..s)
+//!     .map(|_| ECScalar::from(&BigInt::sample_range(&one, &range)))
+//!     .collect::<Vec<FE>>();
+//! 
+//! // generate blinding factors
+//! let r_vec = (0..s).map(|_| ECScalar::new_random()).collect::<Vec<FE>>();
+//! 
+//! // G, H, Gt - curve points for generating outputs and key-images
+//! let G: GE = ECPoint::generator();
+//! let label1 = BigInt::from(1);
+//! let hash1 = HSha512::create_hash(&[&label1]);
+//! let H = generate_random_point(&Converter::to_vec(&hash1));
+//! let label2 = BigInt::from(block_ht);
+//! let hash2 = HSha512::create_hash(&[&label2]);
+//! let Gt = generate_random_point(&Converter::to_vec(&hash2));
+//! 
+//! let label2 = BigInt::from(2);
+//! let hash2 = HSha512::create_hash(&[&label2]);
+//! let H_prime = generate_random_point(&Converter::to_vec(&hash2));   
+//! 
+//! // generate p_vec, g_prime_vec, h_vec
+//! let p_len = n+3;
+//! let g_prime_len = t-p_len;
+//! let h_len = t;
+//! 
+//! let order = FE::q();
+//! let order_sq = BigInt::mod_mul(&order, &order, &order);
+//! let order_cube = BigInt::mod_mul(&order_sq, &order, &order);
+//! let order_four = BigInt::mod_mul(&order_cube, &order, &order);
+//! let order_five = BigInt::mod_mul(&order_four, &order, &order);
+//! let q_hash = HSha256::create_hash(&[&order]);
+//! let q_sq_hash = HSha256::create_hash(&[&order_sq]);
+//! let q_cube_hash = HSha256::create_hash(&[&order_cube]);
+//! let q_four_hash = HSha256::create_hash(&[&order_four]);
+//! let q_five_hash = HSha256::create_hash(&[&order_five]);
+//! 
+//! let p_vec = (0..p_len)
+//!     .map(|i| {
+//!         let label_i = BigInt::from(i as u32) + q_hash.clone();
+//!         let hash_i = HSha512::create_hash(&[&label_i]);
+//!         generate_random_point(&Converter::to_vec(&hash_i))
+//!     })
+//!     .collect::<Vec<GE>>();
+//! 
+//! let g_prime_vec = (0..g_prime_len)
+//!     .map(|i| {
+//!         let label_i = BigInt::from(i as u32) + q_sq_hash.clone();
+//!         let hash_i = HSha512::create_hash(&[&label_i]);
+//!         generate_random_point(&Converter::to_vec(&hash_i))
+//!     })
+//!     .collect::<Vec<GE>>();
+//! 
+//! let h_vec = (0..h_len)
+//!     .map(|i| {
+//!         let label_i = BigInt::from(i as u32) + q_cube_hash.clone();
+//!         let hash_i = HSha512::create_hash(&[&label_i]);
+//!         generate_random_point(&Converter::to_vec(&hash_i))
+//!     })
+//!     .collect::<Vec<GE>>();
+//! 
+//! // Append random group generators to g_vec_w and hi_tag
+//! let g_vec_append = (0..res)
+//!     .map(|i| {
+//!         let rString_label_i = BigInt::from(i as u32) +q_four_hash.clone();
+//!         let hash_i = HSha256::create_hash(&[&rString_label_i]);
+//!         generate_random_point(&Converter::to_vec(&hash_i))
+//!     })
+//!     .collect::<Vec<GE>>();
+//! 
+//! let h_vec_append = (0..res)
+//!     .map(|i| {
+//!         let rString_label_i = BigInt::from(i as u32) + q_five_hash.clone();
+//!         let hash_i = HSha256::create_hash(&[&rString_label_i]);
+//!         generate_random_point(&Converter::to_vec(&hash_i))
+//!     })
+//!     .collect::<Vec<GE>>();
+//! 
+//! // Select random outputs owned by the exchange
+//! let mut C_vec_mut: Vec<GE> = (0..n).map(|_| G).collect::<Vec<GE>>();
+//! 
+//! // generate random index vector of size s
+//! let mut rng = rand::thread_rng();
+//! let setsize = n / s;
+//! let mut start_idx = 0;
+//! let mut end_idx = cmp::max(1, setsize-1);
+//! let idx = (0..s).map(|_| {
+//! 
+//!     let dist1 = Uniform::from(start_idx..end_idx);
+//!     start_idx = setsize + start_idx;
+//!     end_idx =  cmp::min(n-1, end_idx + setsize);
+//! 
+//!     dist1.sample(&mut rng)
+//! })
+//! .collect::<Vec<usize>>();
+//! 
+//! let mut index = 0;
+//! let E_vec = (0..n)
+//!     .map(|i| {
+//!         if index < idx.len() {
+//!             if i == idx[index] {
+//!                 // generate commitments using a_vec, r_vec
+//!                 C_vec_mut[i as usize] = G * &r_vec[index] + H * &a_vec[index];
+//!                 index = index + 1;
+//!                 one.clone()
+//!             }
+//!             else {
+//!                 BigInt::zero()
+//!             }
+//!         }
+//!         else{
+//!             BigInt::zero()
+//!         }
+//!     })
+//!     .collect::<Vec<BigInt>>();
+//! 
+//! let revelio_test = RevelioBP::prove(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut, &E_vec, &a_vec, &r_vec);
+//! let result = revelio_test.verify(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut);
+//! 
+//! assert!(result.is_ok());
+//! ```
+//! 
 
 // based on the paper: <link to paper>
 
@@ -31,6 +172,11 @@ use rand::distributions::{Distribution, Uniform};
 use std::cmp;
 
 
+///
+/// Computes constraint vectors \( (\textbf{v}\_0, \textbf{v}\_1, \textbf{v}\_2, \textbf{v}\_3, \textbf{v}\_4) \) 
+/// and  \( (\vec{\alpha}, \vec{\beta}, \vec{\theta}, \vec{\theta}^{\circ -1}, \vec{\mu}, \vec{\nu}, \vec{\zeta}, \delta)  \) 
+/// given the challenges \(u,v,y,z\).
+/// 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Constraints{
     alpha: Vec<BigInt>,
@@ -43,6 +189,9 @@ pub struct Constraints{
 }
 
 impl Constraints{
+    ///
+    /// Generates the constraint vectors as defined in Fig. 2, 3, 4, 5 of the [RevelioBP](https://tobe_added.com) paper.
+    /// 
     pub fn generate_constraints(
         u: BigInt,
         v: BigInt,
@@ -260,6 +409,10 @@ impl Constraints{
     }
 }
 
+
+///
+/// Generates a RevelioBP proof and verifies a given RevelioBP proof.
+/// 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RevelioBP {
     I_vec: Vec<GE>,
@@ -276,6 +429,18 @@ pub struct RevelioBP {
 }
 
 impl RevelioBP {
+    ///
+    /// Given the common reference string along with valid witness,
+    /// this generates a RevelioBP proof.
+    /// 
+    /// Note that the amount vector `a_vec` is needed only for computation of the tag vector.
+    /// 
+    /// Vectors `g_vec_append` and `h_vec_append` are used only to scale up the base vectors
+    /// to a power of \(2\).
+    /// 
+    /// Generator `Gt` is to be generated according to *nothing up my sleeve* method
+    /// using the block height as a seed.
+    /// 
     pub fn prove(
         // crs
         G: &GE,
@@ -629,6 +794,13 @@ impl RevelioBP {
         };
     }
 
+    ///
+    /// Verifies if a given RevelioBP proof is valid and if it satisfies the verification equations.
+    /// 
+    /// Note that verification requires the same `g_vec_append` and `h_vec_append` as those used while proving.
+    /// Same holds for other generators.
+    /// 
+    /// Also, the order of `C_vec` has to be universally agreed upon, we have assumed it to be in lexicographic ordering.
     pub fn verify(
         &self,
         // crs
@@ -805,6 +977,11 @@ impl RevelioBP {
         }
     }
 
+    ///
+    /// This function is used as a precursor for simulation of RevelioBP proof
+    /// generation and verification. It generates all necessary generators, statement,
+    /// witness to successfully build a RevelioBP proof and verify the same.
+    /// 
     pub fn gen_params(n: usize, s: usize) -> (
         GE, GE, GE, GE,
         Vec<GE>, Vec<GE>, Vec<GE>, Vec<GE>, Vec<GE>, Vec<GE>,
@@ -943,6 +1120,12 @@ impl RevelioBP {
     }
 }
 
+///
+/// Generates a random number on the secp256k1 elliptic curve. 
+/// Uses the rejection sampling technique to find a valid curve point iteratively.
+/// 
+/// TODO: Use an Elligator-based appraoch to make random curve point generation efficient.
+/// 
 pub fn generate_random_point(bytes: &[u8]) -> GE {
     let result: Result<GE, _> = ECPoint::from_bytes(&bytes);
     if result.is_ok() {

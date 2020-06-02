@@ -27,6 +27,9 @@ extern crate time;
 /// 
 pub mod proofs;
 
+
+///
+/// Errors in construction of [RevelioBP](proofs/revelio_bp/index.html) and [Improved Inner Product](proofs/inner_product/index.html) protocols.
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
 pub enum Errors {
     InnerProductError,

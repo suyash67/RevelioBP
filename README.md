@@ -14,6 +14,13 @@ On the downside, the proof generation times of RevelioBP are \(2 \times\) than t
 
 ## Overview of RevelioBP
 
-Given a UTXO set lexicographically ordered as \(\textbf{C}^{(h)} = (C_1, C_2, \dots, C_{n(h)})\), where \(h, n(h)\) are the block height and number of unspent outputs till height \(h\) respectively, suppose an exchange owns outputs \( \textbf{C}^{own} \subset \textbf{C}^{(h)}\) and \( | \textbf{C}^{own}| = s\). Let the index set of exchange-owned addressed be \(\mathcal{E} = (i_1, i_2, \dots, i_s)\). Since each output is a Pedersen commitment of the form \(C = g^{r}h^{a}\) for secret key \(k \in \mathbb{Z}\_q \) and amount \(a \in \mathbb{Z}\_{q}\), knowledge of the secret key \(k\) implies the ownership of an output. Given an output \(C\) and the corresponding secret key \(k\), it is feasible to compute the amount hidden in \(C\) since \(a \in \{0,1,\dots,2^{64}-1\}\). Suppose the secret keys of the exchange-owned outputs is \(\textbf{r} = (r_1, r_2, \dots, r_s)\) and define \(\textbf{e}_{i_j}  \in \{0,1\}^n\) such that it has \(1\) only in position \(i_j\).
+Given a UTXO set lexicographically ordered as \(\textbf{C}^{(h)} = (C_1, C_2, \dots, C_{n(h)})\), where \(h, n(h)\) are the block height and number of unspent outputs till height \(h\) respectively, suppose an exchange owns outputs \( \textbf{C}^{own} \subset \textbf{C}^{(h)}\) and \( | \textbf{C}^{own}| = s\). Let the index set of exchange-owned addressed be \(\mathcal{E} = (i_1, i_2, \dots, i_s)\). Since each output is a Pedersen commitment of the form \(C = g^{r}h^{a}\) for secret key \(r \in \mathbb{Z}\_q \) and amount \(a \in \mathbb{Z}\_{q}\), knowledge of the secret key \(r\) implies the ownership of an output. Given an output \(C\) and the corresponding secret key \(k\), it is feasible to compute the amount hidden in \(C\) since \(a \in \{0,1,\dots,2^{64}-1\}\). Suppose the secret keys of the exchange-owned outputs is \(\textbf{r} = (r\_1, r\_2, \dots, r\_s)\) and define \(\textbf{e}\_{j}  \in \{0,1\}^n\) such that it has \(1\) only in position \(i\_j\). We also publish a tag vector \(\textbf{I} = (I\_1, \dots, I\_s)\) where \(I\_j = g\_t^{r\_j} h^{a\_j} \) is a deterministic function of the secret key \(r\_j\) and amount \(a\_j\).
+This tag vector would be used to detect collusion in exchanges sharing outputs. Note that \(g\_t\) is a generator dependent on the block height \(h\).
+
+RevelioBP is a zero-knowledge proof of reserves protocol for the following statement:
+
+\\[ \mathcal{L}\_{\textsf{RevBP}} = \left[ [\textbf{C}, \textbf{I}] \ | \ \exists [ \textbf{r}, \textbf{e}\_{1}, \dots, \textbf{e}\_{s}]  \text{  s.t  } C_{i\_j} = g^{r\_j} h^{a\_j}, \ I_{j} = g\_{t}^{r\_j} h^{a\_j} \right] \\]
+
+
 
 
