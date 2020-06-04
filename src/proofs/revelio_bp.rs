@@ -275,7 +275,8 @@ impl Constraints{
                 }
                 else {
                     // Solving the issue of theta by changing v0
-                    BigInt::one()
+                    // BigInt::one()
+                    BigInt::zero()
                 }
             })
             .collect::<Vec<BigInt>>();
@@ -349,9 +350,16 @@ impl Constraints{
             })
             .collect::<Vec<BigInt>>();
 
+        // redefining theta = [0 0 0...1 y y^2 ... y^{sn}]
+        // theta_inv = [1 1 1...1 y^{-1} ...]
         let theta_inv = (0..t)
             .map(|i| {
-                BigInt::mod_inv(&theta[i], &order)
+                if theta[i] == BigInt::zero() {
+                    BigInt::one()
+                }
+                else{
+                    BigInt::mod_inv(&theta[i], &order)
+                }
             })
             .collect::<Vec<BigInt>>();
         
@@ -515,14 +523,12 @@ impl RevelioBP {
                 BigInt::mod_sub(&BigInt::zero(), &us_r_i, &order)
             })
             .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc,&x,&order));
-              
-        let xi_prime = (0..s)
-            .map(|i| {
-                let u_i = BigInt::mod_pow(&u_bn, &BigInt::from(i as u32), &order);
-                BigInt::mod_mul(&u_i, &r_vec[i].to_big_int(), &order)
-            })
-            .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc,&x,&order));
+           
+        // xi_prime = -xi
+        // avoiding additional computation
+        let xi_prime = BigInt::mod_sub(&BigInt::zero(), &xi, &order);
 
+        // compute e_hat
         let mut E_mat: Vec<BigInt> = Vec::new();
         let zero_vec = vec![BigInt::zero(); n];
         let mut index: usize = 0;
@@ -623,20 +629,45 @@ impl RevelioBP {
         // P -> V: S
         // S = (H' * r_s) + <g_w * s_L> + <h * s_R>
         let r_S: FE = ECScalar::new_random();
-        let s_R = (0..t).map(|_| ECScalar::new_random()).collect::<Vec<FE>>();
-        let s_L = (0..t).map(|_| ECScalar::new_random()).collect::<Vec<FE>>();
+        
+        // define s_R and s_L
+        // s_R[i] = 0 if c_R[i] = 0, else a random scalar
+        let mut random_scalar: FE = ECScalar::new_random();
+        let s_R_bn = (0..t).map(|i| {
+            if c_R[i] != BigInt::zero() {
+                random_scalar = ECScalar::new_random();
+                random_scalar.to_big_int()
+            }
+            else {
+                BigInt::zero()
+            }
+        })
+        .collect::<Vec<BigInt>>();
 
+        let s_L_bn = (0..t).map(|_| {
+            random_scalar = ECScalar::new_random();
+            random_scalar.to_big_int()
+        })
+        .collect::<Vec<BigInt>>();
+
+        // P -> V: S
+        // Computes S = r_s*(h') + <s_R, g_vec_w> + <s_L, h_vec>
         let H_prime_r_S: GE = H_prime * &r_S;
         let sL_gw = (0..t)
             .map(|i| {
-                &g_vec_w[i] * &s_L[i]
+                &g_vec_w[i] * &ECScalar::from(&s_L_bn[i])
             })
             .fold(H_prime_r_S, |acc, x| acc + x as GE);
-        let S = (0..t)
-            .map(|i| {
-                &h_vec[i] * &s_R[i]
-            })
-            .fold(sL_gw, |acc, x| acc + x as GE);
+
+        let S = h_vec.iter().zip(&s_R_bn).fold(sL_gw, |acc, x| {
+                if x.1 != &BigInt::zero() {
+                    let var = x.0 * &ECScalar::from(&x.1);
+                    acc+var
+                }
+                else {
+                    acc
+                }
+            });
 
         // challenges y,z
         let y = HSha256::create_hash_from_ge(&[&A, &S]);
@@ -663,9 +694,7 @@ impl RevelioBP {
         // calculate t2, t1, t0
         let t2 = (0..t)
             .map(|i| {
-                let sR_bn = s_R[i].to_big_int();
-                let sL_bn = s_L[i].to_big_int();
-                let sR_sL = BigInt::mod_mul(&sR_bn, &sL_bn, &order);
+                let sR_sL = BigInt::mod_mul(&s_R_bn[i], &s_L_bn[i], &order);
                 BigInt::mod_mul(&sR_sL, &theta[i], &order)
             })
             .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc, &x, &order));
@@ -674,10 +703,10 @@ impl RevelioBP {
             .map(|i| {
                 let t1_1 = BigInt::mod_add(&c_L[i], &alpha[i], &order);
                 let t1_2 = BigInt::mod_mul(&t1_1, &theta[i], &order);
-                let t1_3 = BigInt::mod_mul(&t1_2, &s_R[i].to_big_int(), &order);
+                let t1_3 = BigInt::mod_mul(&t1_2, &s_R_bn[i], &order);
                 let t1_4 = BigInt::mod_mul(&c_R[i], &theta[i], &order);
                 let t1_5 = BigInt::mod_add(&t1_4, &mu[i], &order);
-                let t1_6 = BigInt::mod_mul(&t1_5, &s_L[i].to_big_int(), &order);
+                let t1_6 = BigInt::mod_mul(&t1_5, &s_L_bn[i], &order);
                 BigInt::mod_add(&t1_3, &t1_6, &order)
             })
             .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc, &x, &order));  
@@ -694,6 +723,8 @@ impl RevelioBP {
         let challenge_x = HSha256::create_hash_from_ge(&[&A, &S, &yG, &T1, &T2, G, H]);
         let challenge_x_square = challenge_x.mul(&challenge_x.get_element());
 
+        let challenge_x_bn = (challenge_x).to_big_int();
+        
         // compute tau_x, r, Lp, Rp, t_hat
         let taux_1 = challenge_x.mul(&tau1.get_element());
         let taux_2 = challenge_x_square.mul(&tau2.get_element());
@@ -703,7 +734,8 @@ impl RevelioBP {
 
         let Lp = (0..t)
             .map(|i| {
-                let Lp_1 = (s_L[i].mul(&challenge_x.get_element())).to_big_int();
+                let Lp_1 = BigInt::mod_mul(&s_L_bn[i], &challenge_x_bn, &order);
+                // let Lp_1 = (s_L[i].mul(&challenge_x.get_element())).to_big_int();
                 let Lp_2 = BigInt::mod_add(&c_L[i], &alpha[i], &order);
                 BigInt::mod_add(&Lp_1, &Lp_2, &order)
             })
@@ -711,7 +743,8 @@ impl RevelioBP {
 
         let Rp = (0..t)
             .map(|i| {
-                let Rp_1 = (s_R[i].mul(&challenge_x.get_element())).to_big_int();
+                let Rp_1 = BigInt::mod_mul(&s_R_bn[i], &challenge_x_bn, &order);
+                // let Rp_1 = (s_R[i].mul(&challenge_x.get_element())).to_big_int();
                 let Rp_2 = BigInt::mod_add(&c_R[i], &Rp_1, &order);
                 let Rp_3 = BigInt::mod_mul(&Rp_2, &theta[i], &order);
                 BigInt::mod_add(&Rp_3, &mu[i], &order)
@@ -721,7 +754,7 @@ impl RevelioBP {
         let t_hat = Lp.iter().zip(&Rp).fold(BigInt::zero(), |acc, x| {
             let Lp_iRp_i = BigInt::mod_mul(x.0, x.1, &order);
             BigInt::mod_add(&acc, &Lp_iRp_i, &order)
-        });     
+        });
 
         // Running inner product argument
         let t_hat_fe: FE = ECScalar::from(&t_hat);
@@ -745,7 +778,7 @@ impl RevelioBP {
                 &h_vec[i] * &theta_inv_i_fe
             })
             .collect::<Vec<GE>>();
-
+        
         // P = P2 + <Rp, hi_tag>
         let P = hi_tag.iter().zip(&Rp).fold(P2, |acc, x| {
             if x.1 == &BigInt::zero() {
@@ -884,6 +917,8 @@ impl RevelioBP {
         let Tx_sq = &self.T2 * &challenge_x_square;
         let right_side = Gdelta + Tx + Tx_sq;
 
+        assert_eq!(left_side, right_side, "fails ver#2");
+
         // towards verification eqn #3
         // re-generate challenge w, x'
         let challenge_w = HSha256::create_hash_from_ge(&[&self.A]);
@@ -961,6 +996,8 @@ impl RevelioBP {
                 acc
             }
         });
+
+        println!("P_ver: {:?}", P);
         
         let mut g_vec = g_vec_w.clone();
         let mut h_vec_long = hi_tag.clone();
@@ -1124,7 +1161,7 @@ impl RevelioBP {
 /// Generates a random number on the secp256k1 elliptic curve. 
 /// Uses the rejection sampling technique to find a valid curve point iteratively.
 /// 
-/// TODO: Use an Elligator-based appraoch to make random curve point generation efficient.
+/// TODO: Use an Elligator-like appraoch to make random curve point generation efficient.
 /// 
 pub fn generate_random_point(bytes: &[u8]) -> GE {
     let result: Result<GE, _> = ECPoint::from_bytes(&bytes);
