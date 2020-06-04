@@ -917,8 +917,6 @@ impl RevelioBP {
         let Tx_sq = &self.T2 * &challenge_x_square;
         let right_side = Gdelta + Tx + Tx_sq;
 
-        assert_eq!(left_side, right_side, "fails ver#2");
-
         // towards verification eqn #3
         // re-generate challenge w, x'
         let challenge_w = HSha256::create_hash_from_ge(&[&self.A]);
@@ -997,8 +995,6 @@ impl RevelioBP {
             }
         });
 
-        println!("P_ver: {:?}", P);
-        
         let mut g_vec = g_vec_w.clone();
         let mut h_vec_long = hi_tag.clone();
         g_vec.extend_from_slice(&g_vec_append);
