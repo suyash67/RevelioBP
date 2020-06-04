@@ -698,7 +698,8 @@ impl RevelioBP {
 
         let S = h_vec.iter().zip(&s_R_bn).fold(sL_gw, |acc, x| {
                 if x.1 != &BigInt::zero() {
-                    x.0 * &ECScalar::from(&x.1)
+                    let var = x.0 * &ECScalar::from(&x.1);
+                    acc+var
                 }
                 else {
                     acc
