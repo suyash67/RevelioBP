@@ -6,21 +6,17 @@ authors = [
 ]
 readme = "README.md"
 license = "MIT"
-license-file = "LICENSE"
 repository = "https://github.com/suyash67/RevelioBP"
 categories = ["cryptography"]
 keywords = ["cryptography", "cryptocurrencies", "proof-of-reserves", "grin", "mimblewimble"]
 description = "A Rust implementation of RevelioBP - a proof of reserves protocol for mimblewimble cryptocurrencies on curve secp256k1."
 exclude = [".gitignore"]
-    
-
-
 
 [lib]
 crate-type = ["lib"]
 
 [dependencies]
-curv = { version = "0.2.6", git = "https://github.com/KZen-networks/curv" , features =  ["ec_secp256k1"]}
+curv = { tag = "v0.2.6", git = "https://github.com/KZen-networks/curv" , features =  ["ec_secp256k1"]}
 itertools = "0.7.8"
 serde = "1.0"
 serde_derive = "1.0"
