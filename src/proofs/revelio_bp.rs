@@ -527,13 +527,8 @@ impl RevelioBP {
         // xi_prime = -xi
         // avoiding additional computation
         let xi_prime = BigInt::mod_sub(&BigInt::zero(), &xi, &order);
-        // let xi_prime = (0..s)
-        //     .map(|i| {
-        //         let u_i = BigInt::mod_pow(&u_bn, &BigInt::from(i as u32), &order);
-        //         BigInt::mod_mul(&u_i, &r_vec[i].to_big_int(), &order)
-        //     })
-        //     .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc,&x,&order));
 
+        // compute e_hat
         let mut E_mat: Vec<BigInt> = Vec::new();
         let zero_vec = vec![BigInt::zero(); n];
         let mut index: usize = 0;
@@ -634,13 +629,12 @@ impl RevelioBP {
         // P -> V: S
         // S = (H' * r_s) + <g_w * s_L> + <h * s_R>
         let r_S: FE = ECScalar::new_random();
-        // let s_R = (0..t).map(|_| ECScalar::new_random()).collect::<Vec<FE>>();
-        // let s_L = (0..t).map(|_| ECScalar::new_random()).collect::<Vec<FE>>();
-
-        // redfining s_R and s_L
+        
+        // define s_R and s_L
+        // s_R[i] = 0 if c_R[i] = 0, else a random scalar
         let mut random_scalar: FE = ECScalar::new_random();
         let s_R_bn = (0..t).map(|i| {
-            if i >= p_len && i < t-s {
+            if c_R[i] != BigInt::zero() {
                 random_scalar = ECScalar::new_random();
                 random_scalar.to_big_int()
             }
@@ -656,39 +650,8 @@ impl RevelioBP {
         })
         .collect::<Vec<BigInt>>();
 
-        // approach#1 
-        //
-        // let H_prime_r_S: GE = H_prime * &r_S;
-        // let sL_gw = (0..t)
-        //     .map(|i| {
-        //         &g_vec_w[i] * &s_L[i]
-        //     })
-        //     .fold(H_prime_r_S, |acc, x| acc + x as GE);
-        // let S = (0..t)
-        //     .map(|i| {
-        //         &h_vec[i] * &s_R[i]
-        //     })
-        //     .fold(sL_gw, |acc, x| acc + x as GE);
-
-        // appraoch#2
-        //
-        // let H_prime_r_S: GE = H_prime * &r_S;
-        // let S = (0..t)
-        //     .map(|i| {
-        //         if i >= p_len && i < t-s {
-        //             // compute (s_R[i]*h_vec[i] + s_L[i]*g_vec_w[i]) 
-        //             // ONLY where theta is non-zero
-        //             let sR_hvec_i = &h_vec[i] * &s_R[i];
-        //             let sL_gvecw_i = &g_vec_w[i] * &s_L[i];
-        //             sR_hvec_i.add_point(&sL_gvecw_i.get_element())
-        //         }
-        //         else {
-        //             &g_vec_w[i] * &s_L[i]
-        //         }
-        //     })
-        //     .fold(H_prime_r_S, |acc, x| acc + x as GE);
-
-        // approach#3
+        // P -> V: S
+        // Computes S = r_s*(h') + <s_R, g_vec_w> + <s_L, h_vec>
         let H_prime_r_S: GE = H_prime * &r_S;
         let sL_gw = (0..t)
             .map(|i| {
@@ -705,7 +668,6 @@ impl RevelioBP {
                     acc
                 }
             });
-
 
         // challenges y,z
         let y = HSha256::create_hash_from_ge(&[&A, &S]);
@@ -728,205 +690,10 @@ impl RevelioBP {
         let theta_inv = constraint_vec.theta_inv.clone();
         let alpha = constraint_vec.alpha.clone();
         let mu = constraint_vec.mu.clone();
-
-        // TODO: DEBUG STARTS
-        // TODO: This snippet checks the constraint equations in Fig.5
-        // TODO: checking the correcteness of encoding of witness.
-        // challenge powers
-        let u_s = (0..s)
-            .map(|i| {
-                BigInt::mod_pow(&u_bn, &BigInt::from(i as u32), &order)
-            })
-            .collect::<Vec<BigInt>>();
-
-        let y_s = (0..s)
-            .map(|i| {
-                BigInt::mod_pow(&y_bn, &BigInt::from(i as u32), &order)
-            })
-            .collect::<Vec<BigInt>>();
-        
-        let y_n = (0..n)
-            .map(|i| {
-                BigInt::mod_pow(&y_bn, &BigInt::from(i as u32), &order)
-            })
-            .collect::<Vec<BigInt>>();
-
-        let minus_y_n = (0..n)
-            .map(|i| {
-                BigInt::mod_sub(&BigInt::zero(), &y_n[i], &order)
-            })
-            .collect::<Vec<BigInt>>();
-
-        let y_sn = (0..sn)
-            .map(|i| {
-                BigInt::mod_pow(&y_bn, &BigInt::from(i as u32), &order)
-            })
-            .collect::<Vec<BigInt>>();
-
-        let us_kronecker_yn = (0..sn)
-            .map(|i| {
-                let j = i % n;
-                let k = i / n;
-                let y_j = BigInt::mod_pow(&y_bn, &BigInt::from(j as u32), &order);
-                let u_k = BigInt::mod_pow(&u_bn, &BigInt::from(k as u32), &order);
-                BigInt::mod_mul(&u_k, &y_j, &order)
-            })
-            .collect::<Vec<BigInt>>();
-        
-        let ys_kronecker_1n = (0..sn)
-            .map(|i| {
-                let k = i / n;
-                BigInt::mod_pow(&y_bn, &BigInt::from(k as u32), &order)
-            })
-            .collect::<Vec<BigInt>>();
-
-        let y_pow_s = BigInt::mod_pow(&y_bn, &BigInt::from(s as u32), &order);
-        // let z_2 = BigInt::mod_pow(&z_bn, &BigInt::from(2), &order);
-        // let z_3 = BigInt::mod_pow(&z_bn, &BigInt::from(3), &order);
-        // let z_4 = BigInt::mod_pow(&z_bn, &BigInt::from(4), &order);
-        
-        let v_minus_1 = BigInt::mod_sub(&v_bn, &BigInt::one(), &order);
-        let v_minus_1_us = (0..s)
-            .map(|i| {
-                BigInt::mod_mul(&v_minus_1, &u_s[i], &order)
-            })
-            .collect::<Vec<BigInt>>();
-
-        // Define constraints fn(u,v,y) : part 1
-        let v0 = (0..t)
-            .map(|i| {
-                if i >= p_len && i < t-s {
-                    y_sn[i-p_len].clone()
-                }
-                else {
-                    // Solving the issue of theta by changing v0
-                    // BigInt::one()
-                    BigInt::zero()
-                }
-            })
-            .collect::<Vec<BigInt>>();
-
-        let v1 = (0..t)
-            .map(|i| {
-                if i==0 {
-                    v_bn.clone()
-                }
-                else if i==1 {
-                    BigInt::one()
-                }
-                else if i >= t-s {
-                    v_minus_1_us[(i+s)-t].clone()
-                }
-                else {
-                    BigInt::zero()
-                }
-            })
-            .collect::<Vec<BigInt>>();
-
-        let v2 = (0..t)
-            .map(|i| {
-                if i >= 2 && i < n+2 {
-                    minus_y_n[i-2].clone()
-                }
-                else if i < t-s && i >= n+3{
-                    us_kronecker_yn[i - (n+3)].clone()
-                }
-                else {
-                    BigInt::zero()
-                }
-            })
-            .collect::<Vec<BigInt>>();
-
-        let v3 = (0..t)
-            .map(|i| {
-                if i == (n+2) {
-                    y_pow_s.clone()
-                }
-                else if i < t-s && i >= n+3{
-                    ys_kronecker_1n[i - (n+3)].clone()
-                }
-                else {
-                    BigInt::zero()
-                }
-            })
-            .collect::<Vec<BigInt>>();
-
-        let v4 = (0..t)
-            .map(|i| {
-                if i >= p_len && i < t-s {
-                    y_sn[i-p_len].clone()
-                }
-                else {
-                    BigInt::zero()
-                }
-            })
-            .collect::<Vec<BigInt>>();
-
-        let one_s_ys = (0..s)
-            .map(|i| {
-                y_s[i].clone()
-            })
-            .fold(y_pow_s.clone(), |acc, x| BigInt::mod_add(&acc, &x, &order));
-
-        // let one_s_ys_z3 = BigInt::mod_mul(&one_s_ys, &z_3, &order);
-
-        // ce0
-        let ce0 = (0..t).map(|i| {
-            let cR_v0 = BigInt::mod_mul(&c_R[i], &v0[i], &order);
-            BigInt::mod_mul(&cR_v0, &c_L[i], &order)
-        })
-        .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc, &x, &order));
-        assert_eq!(ce0, BigInt::zero(), "ce0 fails");
-
-        // ce1
-        let ce1 = (0..t).map(|i| {
-            BigInt::mod_mul(&c_L[i], &v1[i], &order)
-        })
-        .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc, &x, &order));
-        assert_eq!(ce1, BigInt::zero(), "ce1 fails");
-
-        // ce2
-        let ce2 = (0..t).map(|i| {
-            BigInt::mod_mul(&c_L[i], &v2[i], &order)
-        })
-        .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc, &x, &order));
-        assert_eq!(ce2, BigInt::zero(), "ce2 fails");
-
-        // ce3
-        let ce3 = (0..t).map(|i| {
-            BigInt::mod_mul(&c_L[i], &v3[i], &order)
-        })
-        .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc, &x, &order));
-        assert_eq!(ce3, one_s_ys, "ce3 fails");
-
-        // ce4
-        let ce4 = (0..t).map(|i| {
-            let cR_CL = BigInt::mod_add(&c_R[i], &c_L[i], &order);
-            let cR_CL_m1 = BigInt::mod_sub(&cR_CL, &BigInt::one(), &order);
-            BigInt::mod_mul(&cR_CL_m1, &v4[i], &order)
-        })
-        .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc, &x, &order));
-        assert_eq!(ce4, BigInt::zero(), "ce4 fails");
-
-        // check delta =? t0
-        let t0 = (0..t).map(|i| {
-            let cL_alpha = BigInt::mod_add(&c_L[i], &alpha[i], &order);
-            let cR_theta = BigInt::mod_mul(&c_R[i], &theta[i], &order);
-            let cR_theta_mu = BigInt::mod_add(&cR_theta, &mu[i], &order);
-            BigInt::mod_mul(&cR_theta_mu, &cL_alpha, &order)
-        })
-        .fold(BigInt::zero(), |acc, x| BigInt::mod_add(&acc, &x, &order));
-
-        let delta = constraint_vec.delta.clone();
-        assert_eq!(delta, t0, "t0 fails");
-
-        // TODO: DEBUG ENDS
         
         // calculate t2, t1, t0
         let t2 = (0..t)
             .map(|i| {
-                // let sR_bn = s_R[i].to_big_int();
-                // let sL_bn = s_L[i].to_big_int();
                 let sR_sL = BigInt::mod_mul(&s_R_bn[i], &s_L_bn[i], &order);
                 BigInt::mod_mul(&sR_sL, &theta[i], &order)
             })
@@ -957,8 +724,7 @@ impl RevelioBP {
         let challenge_x_square = challenge_x.mul(&challenge_x.get_element());
 
         let challenge_x_bn = (challenge_x).to_big_int();
-        let challenge_x_sq_bn = (challenge_x_square).to_big_int();
-
+        
         // compute tau_x, r, Lp, Rp, t_hat
         let taux_1 = challenge_x.mul(&tau1.get_element());
         let taux_2 = challenge_x_square.mul(&tau2.get_element());
@@ -988,19 +754,7 @@ impl RevelioBP {
         let t_hat = Lp.iter().zip(&Rp).fold(BigInt::zero(), |acc, x| {
             let Lp_iRp_i = BigInt::mod_mul(x.0, x.1, &order);
             BigInt::mod_add(&acc, &Lp_iRp_i, &order)
-        });   
-        
-        // TODO: DEBUG2 starts
-        // TODO: This snipped checks if <Lp, Rp> =? (t0 + t1.x + t2.x^{2}) 
-
-        let t1_x = BigInt::mod_mul(&t1, &challenge_x_bn, &order);
-        let t2_x2 = BigInt::mod_mul(&t2, &challenge_x_sq_bn, &order);
-        let t1_x_plus_t2_x2 = BigInt::mod_add(&t1_x, &t2_x2, &order);
-        let t_hat_comp = BigInt::mod_add(&t0, &t1_x_plus_t2_x2, &order);
-
-        assert_eq!(t_hat, t_hat_comp, "t_hat fails");
-
-        // TODO: DEBUG2 ends
+        });
 
         // Running inner product argument
         let t_hat_fe: FE = ECScalar::from(&t_hat);
@@ -1035,130 +789,6 @@ impl RevelioBP {
                 acc + hi_tag_i_rp_i
             }
         });
-
-        // let mut iter = 0;
-        // let mut hi_tag = h_vec.to_vec();
-        // // let mut temp_point = P2.clone();
-        // let P = h_vec.iter().zip(&Rp).fold(P2, |acc, x| {
-        //     let theta_inv_i_fe: FE = ECScalar::from(&theta_inv[iter]);
-        //     let hi_tag_i = x.0 * &theta_inv_i_fe; 
-        //     hi_tag[iter] = hi_tag_i;
-        //     iter += 1;
-        //     let hi_tag_i_rp_i = hi_tag_i * &ECScalar::from(x.1);
-        //     acc + hi_tag_i_rp_i
-        // });
-
-        println!("P_gen: {:?}", P);
-
-        // TODO: DEBUG3 starts
-        // TODO: Other checks.
-
-        let beta = constraint_vec.beta.clone();
-
-        let hi_tag_mu = hi_tag.iter().zip(&mu).fold(*G, |acc, x| {
-            let var = x.0 * &ECScalar::from(x.1);
-            acc + var
-        });
-        let h_vec_beta = h_vec.iter().zip(&beta).fold(*G, |acc, x| {
-            let var = x.0 * &ECScalar::from(x.1);
-            acc + var
-        });
-
-        assert_eq!(hi_tag_mu, h_vec_beta, "beta fails!");
-
-        let theta_inv_Rp = (0..t).map(|i| {
-            BigInt::mod_mul(&Rp[i], &theta_inv[i], &order)
-        })
-        .collect::<Vec<BigInt>>();
-
-        let theta_theta_inv = (0..t).map(|i| {
-            BigInt::mod_mul(&theta[i], &theta_inv[i], &order)
-        })
-        .collect::<Vec<BigInt>>();
-        let cR_plus_x_sR = (0..t).map(|i| {
-            let x_sR = BigInt::mod_mul(&challenge_x_bn, &s_R_bn[i], &order);
-            BigInt::mod_add(&c_R[i], &x_sR, &order)
-        })
-        .collect::<Vec<BigInt>>();
-        let theta_inv_Rp1 = (0..t).map(|i| {
-            BigInt::mod_mul(&theta_theta_inv[i], &cR_plus_x_sR[i], &order)
-        })
-        .collect::<Vec<BigInt>>();
-
-        let theta_inv_Rp2 = (0..t).map(|i| {
-            BigInt::mod_add(&beta[i], &theta_inv_Rp1[i], &order)
-        })
-        .collect::<Vec<BigInt>>();
-
-        assert_eq!(theta_inv_Rp2, theta_inv_Rp, "Rp fails!");
-
-        // check h_vec powers
-        let cR_plus_x_sR_plus_beta = (0..t).map(|i| {
-            BigInt::mod_add(&beta[i], &cR_plus_x_sR[i], &order)
-        })
-        .collect::<Vec<BigInt>>();
-        let h_vec_ver = h_vec.iter().zip(&cR_plus_x_sR_plus_beta).fold(*G, |acc, x| {
-            let var = x.0 * &ECScalar::from(x.1);
-            acc + var
-        });
-        let hi_tag_Rp = hi_tag.iter().zip(&Rp).fold(*G, |acc, x| {
-            let var = x.0 * &ECScalar::from(x.1);
-            acc + var
-        });
-        assert_eq!(h_vec_ver, hi_tag_Rp, "ver gen mess");
-
-        // check g_w vec powers
-        let cL_plus_x_sL = (0..t).map(|i| {
-            let x_sL = BigInt::mod_mul(&challenge_x_bn, &s_L_bn[i], &order);
-            BigInt::mod_add(&c_L[i], &x_sL, &order)
-        })
-        .collect::<Vec<BigInt>>();
-
-        // check main equality g0^{cL} =? gw^{cL}
-        let g0_cL = g_vec_0.iter().zip(&c_L).fold(*G, |acc, x| {
-            if x.1 != &BigInt::zero() {
-                let var = x.0 * &ECScalar::from(x.1);
-                acc + var
-            }
-            else {
-                acc
-            }
-        });
-        let gw_cL = g_vec_w.iter().zip(&c_L).fold(*G, |acc, x| {
-            if x.1 != &BigInt::zero() {
-                let var = x.0 * &ECScalar::from(x.1);
-                acc + var
-            }
-            else {
-                acc
-            }
-        });
-        assert_eq!(g0_cL, gw_cL, "main eq fails!");
-
-        // rhs
-        let H_prime_r = H_prime * &r;
-        let gw_cL_x_sL = g_vec_w.iter().zip(&cL_plus_x_sL).fold(H_prime_r, |acc, x| {
-            let var = x.0 * &ECScalar::from(x.1);
-            acc + var
-        });
-        let rhs = h_vec.iter().zip(&cR_plus_x_sR).fold(gw_cL_x_sL, |acc, x| {
-            if x.1 != &BigInt::zero() {
-                let var = x.0 * &ECScalar::from(x.1);
-                acc + var
-            }
-            else {
-                acc
-            }
-        });
-
-        // lhs
-        let Sx = S * &challenge_x;
-        let lhs = A.add_point(&Sx.get_element());
-        
-        // FAILING HERE AS OF NOW.
-        assert_eq!(lhs, rhs, "Fails in AS^(s) =? (h')^(r) g_vec_w^(cL+x.sL) h_vec^(cR+x.sR)");
-
-        // TODO: DEBUG3 ends
         
         // Run ipp for non-power of two secret vectors
         let N = t.next_power_of_two();
