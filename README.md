@@ -23,7 +23,7 @@ RevelioBP is a zero-knowledge proof of reserves protocol for the following state
 
 ## Sample Simulation 
 
-```
+```rust
 //
 // Prover's Computation (For Crypto Exchanges)
 //
