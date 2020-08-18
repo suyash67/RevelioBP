@@ -1011,6 +1011,265 @@ impl RevelioBP {
     }
 
     ///
+    /// Verifies if a given RevelioBP proof is valid and if it satisfies the verification equations.
+    /// 
+    /// Note that verification requires the same `g_vec_append` and `h_vec_append` as those used while proving.
+    /// Same holds for other generators.
+    /// 
+    /// Also, the order of `C_vec` has to be universally agreed upon, we have assumed it to be in lexicographic ordering.
+    /// 
+    /// `fast_verify` implies that the given RevelioBP proof is verified using a single multi-exponentiation equation.
+    ///  
+    pub fn fast_verify(
+        &self,
+        // crs
+        G: &GE,
+        H: &GE,
+        Gt: &GE,
+        H_prime: &GE,
+        p_vec: &[GE],
+        g_prime_vec: &[GE],
+        h_vec: &[GE],
+        g_vec_append: &[GE],
+        h_vec_append: &[GE],
+        // stmt
+        C_vec: &[GE],
+    ) -> Result<(), Errors> {
+
+        // vector lengths
+        let n = C_vec.len();
+        let s = self.I_vec.len();
+        let t = s*n + n + s + 3;
+        let N = t.next_power_of_two();
+        let res = N - t;
+        
+        // sanity check of lengths
+        assert_eq!(p_vec.len() + g_prime_vec.len(), t);
+        assert_eq!(t + g_vec_append.len(), N);
+        assert!(N.is_power_of_two());
+        
+        // other prelims
+        let order = FE::q();
+        let ipp = &self.inner_product_proof;
+        let lg_N = ipp.L.len();
+
+        // re-generate challenges u, v, y, z
+        let u = HSha256::create_hash_from_ge(&[G, H, Gt]);
+        let u_bn = u.to_big_int();
+        let base_point: GE = ECPoint::generator();
+        let uG: GE = base_point * &u;
+        let v = HSha256::create_hash_from_ge(&[&uG]);
+        let v_bn = v.to_big_int();   
+
+        let y = HSha256::create_hash_from_ge(&[&self.A, &self.S]);
+        let base_point: GE = ECPoint::generator();
+        let yG: GE = base_point * &y;
+        let y_bn = y.to_big_int();
+        
+        let z = HSha256::create_hash_from_ge(&[&self.A, &self.S, &yG]);
+        let z_bn = z.to_big_int();
+
+        // re-generate challenge x
+        let challenge_x = HSha256::create_hash_from_ge(&[&self.A, &self.S, &yG, &self.T1, &self.T2, G, H]);
+        let challenge_x_square = challenge_x.mul(&challenge_x.get_element());
+
+        // re-generate challenge w, x'
+        let challenge_w = HSha256::create_hash_from_ge(&[&self.A]);
+
+        let challenge_x_prime = HSha256::create_hash(&[
+            &self.tau_x.to_big_int(),
+            &self.r.to_big_int(),
+            &self.t_hat.to_big_int(),
+        ]);
+        let challenge_x_prime: FE = ECScalar::from(&challenge_x_prime);
+        let ux = G * &challenge_x_prime; 
+
+        // generate scalar c, c1 for combining verification equations
+        let c_bn = HSha256::create_hash_from_ge(&[&self.S]).to_big_int();
+        let c1_bn = HSha256::create_hash_from_ge(&[&self.S, &self.T1]).to_big_int();
+
+        // generate constraints
+        let constraint_vec = Constraints::generate_constraints(u_bn.clone(),
+            v_bn.clone(),
+            y_bn.clone(),
+            z_bn.clone(),
+            n.clone(),
+            s.clone()
+        );
+
+        // independently computing constraints 
+        let theta_inv = constraint_vec.theta_inv.clone();
+        let alpha = constraint_vec.alpha.clone();
+        let delta = constraint_vec.delta.clone();
+        let beta = constraint_vec.beta.clone();
+
+        let mut alpha_ext: Vec<BigInt> = Vec::with_capacity(N);
+        alpha_ext.extend_from_slice(&alpha);
+        alpha_ext.extend_from_slice(&vec![BigInt::zero(); res]);
+
+        let mut beta_ext: Vec<BigInt> = Vec::with_capacity(N);
+        beta_ext.extend_from_slice(&beta);
+        beta_ext.extend_from_slice(&vec![BigInt::zero(); res]);
+
+        let mut theta_inv_ext: Vec<BigInt> = Vec::with_capacity(N);
+        theta_inv_ext.extend_from_slice(&theta_inv);
+        theta_inv_ext.extend_from_slice(&vec![BigInt::one(); res]);
+        
+        // towards single multi-exponentiation verification
+        // compute sg and sh vectors
+        let mut x_sq_vec: Vec<BigInt> = Vec::with_capacity(lg_N);
+        let mut x_inv_sq_vec: Vec<BigInt> = Vec::with_capacity(lg_N);
+        let mut minus_x_sq_vec: Vec<BigInt> = Vec::with_capacity(lg_N);
+        let mut minus_x_inv_sq_vec: Vec<BigInt> = Vec::with_capacity(lg_N);
+        let mut allinv = BigInt::one();
+        for (Li, Ri) in ipp.L.iter().zip(ipp.R.iter()) {
+
+            let x = HSha256::create_hash_from_ge(&[&Li, &Ri, &ux]);
+            let x_bn = x.to_big_int();
+            let x_inv_fe = x.invert();
+            let x_inv_bn = x_inv_fe.to_big_int();
+            let x_sq_bn = BigInt::mod_mul(&x_bn, &x_bn, &order);
+            let x_inv_sq_bn =
+                BigInt::mod_mul(&x_inv_fe.to_big_int(), &x_inv_fe.to_big_int(), &order);
+            
+            x_sq_vec.push(x_sq_bn.clone());
+            x_inv_sq_vec.push(x_inv_sq_bn.clone());
+            minus_x_sq_vec.push(BigInt::mod_sub(&BigInt::zero(), &x_sq_bn, &order));
+            minus_x_inv_sq_vec.push(BigInt::mod_sub(&BigInt::zero(), &x_inv_sq_bn, &order));
+            allinv = allinv * x_inv_bn;
+        }
+
+        let mut s_vec: Vec<BigInt> = Vec::with_capacity(N);
+        s_vec.push(allinv);
+        for i in 1..N {
+            let lg_i = (32 - 1 - (i as u32).leading_zeros()) as usize;
+            let k = 1 << lg_i;
+            // The challenges are stored in "creation order" as [x_k,...,x_1],
+            // so u_{lg(i)+1} = is indexed by (lg_N-1) - lg_i
+            let x_lg_i_sq = x_sq_vec[(lg_N - 1) - lg_i].clone();
+            s_vec.push(s_vec[i - k].clone() * x_lg_i_sq);
+        }
+
+        // a*s_vec - alpha
+        let a_times_s_minus_alpha: Vec<BigInt> = (0..N).map(|i| {
+                let a_times_si = BigInt::mod_mul(&s_vec[i], &ipp.a_tag, &order);
+                BigInt::mod_sub(&a_times_si, &alpha_ext[i], &order)
+            })
+            .collect();
+
+        // theta^{-1}*b*s_vec_inv - beta
+        let b_div_s_times_theta_inv_minus_beta: Vec<BigInt> = (0..N).map(|i| {
+            let s_inv_i = BigInt::mod_inv(&s_vec[i], &order);
+            let b_div_si = BigInt::mod_mul(&s_inv_i, &ipp.b_tag, &order);
+            let b_div_si_thetainvi = BigInt::mod_mul(&theta_inv_ext[i], &b_div_si, &order);
+            BigInt::mod_sub(&b_div_si_thetainvi, &beta_ext[i], &order)
+        })
+        .collect();
+
+        // exponent of g
+        let w_bn = challenge_w.to_big_int();
+        let scalar_g1 = BigInt::mod_mul(&a_times_s_minus_alpha[0], &w_bn, &order);
+        let delta_minus_that = BigInt::mod_sub(&delta, &self.t_hat.to_big_int(), &order);
+        let scalar_g2 = BigInt::mod_mul(&delta_minus_that, &c_bn, &order);
+        let scalar_g = BigInt::mod_add(&scalar_g1, &scalar_g2, &order);
+
+        // exponent of gt
+        let scalar_gt = BigInt::mod_mul(&w_bn, &a_times_s_minus_alpha[1], &order);
+
+        // exponent of C_vec
+        let scalar_C_vec: Vec<BigInt> = (0..n).map(|i| {
+                BigInt::mod_mul(&w_bn, &a_times_s_minus_alpha[2+i], &order)
+            })
+            .collect();
+
+        // exponent of I_vec
+        let u_s = (0..s)
+            .map(|i| {
+                BigInt::mod_pow(&u_bn, &BigInt::from(i as u32), &order)
+            })
+            .collect::<Vec<BigInt>>();
+        let scalar_I_vec: Vec<BigInt> = (0..s).map(|i| {
+            let minus_ui = BigInt::mod_sub(&BigInt::zero(), &u_s[i], &order);
+            let minus_ui_w = BigInt::mod_mul(&w_bn, &minus_ui, &order);
+            let minus_ui_asi = BigInt::mod_mul(&minus_ui_w, &a_times_s_minus_alpha[2+n], &order);
+            BigInt::mod_add(&minus_ui_asi, &c1_bn, &order)
+        })
+        .collect();
+
+        // exponent of p_vec
+        let scalar_p_vec: Vec<BigInt> = a_times_s_minus_alpha[0..n+3].to_vec();
+
+        // exponent of g_prime_vec
+        let scalar_g_prime_vec: Vec<BigInt> = a_times_s_minus_alpha[n+3..t].to_vec();
+
+        // exponent of g_append_vec
+        let scalar_g_append_vec: Vec<BigInt> = a_times_s_minus_alpha[t..N].to_vec();
+
+        // exponent of ux
+        let ab = BigInt::mod_mul(&ipp.a_tag, &ipp.b_tag, &order);
+        let scalar_ux = BigInt::mod_sub(&ab, &self.t_hat.to_big_int(), &order);
+        
+        // exponent of S
+        let scalar_S = BigInt::mod_sub(&BigInt::zero(), &challenge_x.to_big_int(), &order);
+
+        // exponent of T1, T2
+        let scalar_T1 = BigInt::mod_mul(&c_bn, &challenge_x.to_big_int(), &order);
+        let scalar_T2 = BigInt::mod_mul(&c_bn, &challenge_x_square.to_big_int(), &order);
+
+        // exponent of h
+        let c_taux = BigInt::mod_mul(&c_bn, &self.tau_x.to_big_int(), &order);
+        let scalar_H = BigInt::mod_sub(&BigInt::zero(), &c_taux, &order);
+
+        // exponent of C_res
+        let scalar_Cres = BigInt::mod_sub(&BigInt::zero(), &c1_bn, &order);
+
+
+        // compute (h')^{r}
+        let Hr = H_prime * &self.r;
+
+        // concatenate scalars and points
+        let mut scalars: Vec<BigInt> = Vec::with_capacity(2*N + 2*lg_N + 4);
+        scalars.extend_from_slice(&[scalar_g, scalar_gt]);
+        scalars.extend_from_slice(&scalar_C_vec);
+        scalars.extend_from_slice(&scalar_I_vec);
+        scalars.extend_from_slice(&scalar_p_vec);
+        scalars.extend_from_slice(&scalar_g_prime_vec);
+        scalars.extend_from_slice(&scalar_g_append_vec);
+        scalars.extend_from_slice(&b_div_s_times_theta_inv_minus_beta);
+        scalars.extend_from_slice(&minus_x_sq_vec);
+        scalars.extend_from_slice(&minus_x_inv_sq_vec);
+        scalars.extend_from_slice(&[scalar_ux, scalar_H, scalar_S, scalar_T1, scalar_T2, scalar_Cres]);
+
+        let mut points: Vec<GE> = Vec::with_capacity(2*N + 2*lg_N + 4);
+        points.extend_from_slice(&[*G, *Gt]);
+        points.extend_from_slice(&C_vec);
+        points.extend_from_slice(&self.I_vec);
+        points.extend_from_slice(&p_vec);
+        points.extend_from_slice(&g_prime_vec);
+        points.extend_from_slice(&g_vec_append);
+        points.extend_from_slice(&h_vec);
+        points.extend_from_slice(&h_vec_append);
+        points.extend_from_slice(&ipp.L);
+        points.extend_from_slice(&ipp.R);
+        points.extend_from_slice(&[ux, *H, self.S, self.T1, self.T2, self.C_assets]);
+
+        assert_eq!(scalars.len(), points.len(), "Number of scalars and points not equal!");
+
+        // compute multi-exponentiation
+        let expected_A = (0..scalars.len()).map(|i| {
+                points[i] * &ECScalar::from(&scalars[i])
+            })
+            .fold(Hr, |acc, x| acc + x as GE);
+
+        // check if expected_A == A
+        if expected_A == self.A {
+            Ok(())
+        } else {
+            Err(RevelioBPError)
+        }
+    }
+
+    ///
     /// This function is used as a precursor for simulation of RevelioBP proof
     /// generation and verification. It generates all necessary generators, statement,
     /// witness to successfully build a RevelioBP proof and verify the same.
@@ -1447,7 +1706,7 @@ mod tests {
             .collect::<Vec<BigInt>>();
         
         let revelio_test = RevelioBP::prove(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut, &E_vec, &a_vec, &r_vec);
-        let result = revelio_test.verify(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut);
+        let result = revelio_test.fast_verify(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut);
         
         assert!(result.is_ok());
     }
@@ -1590,7 +1849,7 @@ mod tests {
         println!("{:?}", start.to(end));
 
         let start = PreciseTime::now();
-        let result = revelio_test.verify(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut);
+        let result = revelio_test.fast_verify(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut);
         let end = PreciseTime::now();
         println!("{:?}", start.to(end));
 
