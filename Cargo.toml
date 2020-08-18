@@ -32,3 +32,8 @@ rustdoc-args = [
     "--html-in-header",
     "katex.html",
 ]
+
+[[bench]]
+name = "reveliobp_benches"
+path = "benches/reveliobp_benches.rs"
+harness = false
