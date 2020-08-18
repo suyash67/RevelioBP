@@ -50,7 +50,7 @@ fn main() {
         println!("Verification starts");
 
         ver_proof_start = Instant::now();
-        result = revelio_bp_proof.verify(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut);
+        result = revelio_bp_proof.fast_verify(&G, &H, &Gt, &H_prime, &p_vec, &g_prime_vec, &h_vec, &g_vec_append, &h_vec_append, &C_vec_mut);
         assert!(result.is_ok());
         ver_proof_end = Instant::now();
         total_ver_proof_duration += ver_proof_end.duration_since(ver_proof_start);
