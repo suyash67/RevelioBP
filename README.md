@@ -1,7 +1,7 @@
 # RevelioBP - Short, Privacy-preserving MimbleWimble Proof of Reserves Protocol
 
 RevelioBP is a proof of reserves protocol designed for MimbleWimble based cryptocurrencies.
-It in proposed in a paper titled [Performance Trade-offs in Design of MimbleWimble Proofs of Reserves](https://tobeadded.com) which is to appear at *[IEEE Security & Privacy on Blockchain](https://ieeesb.org/)*, 2020.
+It in proposed in a paper titled [Performance Trade-offs in Design of MimbleWimble Proofs of Reserves](https://eprint.iacr.org/2020/938.pdf) which is to appear at *[IEEE Security & Privacy on Blockchain](https://ieeesb.org/)*, 2020.
 
 RevelioBP is a *log-sized* proof of reserves protocol aimed at enhancing the privacy guarantees for a cryptocurrency exchange, building on the first proof of reserves protocol [Revelio](https://eprint.iacr.org/2019/684) (CVCBT 2019). Revelio suffered from the following drawbacks:
 
