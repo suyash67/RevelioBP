@@ -1,0 +1,114 @@
+Generation starts
+Verification starts
+Total simulation time = 2937.606334488s
+Options = Opt { anon_list_size: 102400, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 2352.291209867s
+Average proof verification time = 585.313193171s
+Generation starts
+Verification starts
+Total simulation time = 5931.520917231s
+Options = Opt { anon_list_size: 204800, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 4671.559350787s
+Average proof verification time = 1259.960187532s
+Generation starts
+Verification starts
+Total simulation time = 2.793742567s
+Options = Opt { anon_list_size: 100, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 2.257182564s
+Average proof verification time = 529.181527ms
+Generation starts
+Verification starts
+Total simulation time = 5.54780608s
+Options = Opt { anon_list_size: 200, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 4.476184861s
+Average proof verification time = 1.071542612s
+Generation starts
+Verification starts
+Total simulation time = 11.092424582s
+Options = Opt { anon_list_size: 400, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 8.971235448s
+Average proof verification time = 2.12110229s
+Generation starts
+Verification starts
+Total simulation time = 22.177075631s
+Options = Opt { anon_list_size: 800, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 17.969893123s
+Average proof verification time = 4.207109715s
+Generation starts
+Verification starts
+Total simulation time = 44.044185355s
+Options = Opt { anon_list_size: 1600, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 35.6266828s
+Average proof verification time = 8.417382869s
+Generation starts
+Verification starts
+Total simulation time = 89.353047385s
+Options = Opt { anon_list_size: 3200, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 72.286235626s
+Average proof verification time = 17.066730657s
+Generation starts
+Verification starts
+Total simulation time = 176.426428383s
+Options = Opt { anon_list_size: 6400, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 142.65445127s
+Average proof verification time = 33.771884464s
+Generation starts
+Verification starts
+Total simulation time = 355.172108446s
+Options = Opt { anon_list_size: 12800, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 287.26362684s
+Average proof verification time = 67.908393374s
+Generation starts
+Verification starts
+Total simulation time = 710.086638283s
+Options = Opt { anon_list_size: 25600, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 574.422285331s
+Average proof verification time = 135.664264358s
+Generation starts
+Verification starts
+Total simulation time = 1420.156135943s
+Options = Opt { anon_list_size: 51200, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 1146.809089253s
+Average proof verification time = 273.346951393s
+Generation starts
+Verification starts
+Total simulation time = 12.043575465s
+Options = Opt { anon_list_size: 1000, own_list_size: 10, num_iter: 1 }
+Average proof generation time = 9.924916091s
+Average proof verification time = 2.118581701s
+Generation starts
+Verification starts
+Total simulation time = 23.892987122s
+Options = Opt { anon_list_size: 1000, own_list_size: 20, num_iter: 1 }
+Average proof generation time = 19.657042452s
+Average proof verification time = 4.235863756s
+Generation starts
+Verification starts
+Total simulation time = 51.85368053s
+Options = Opt { anon_list_size: 1000, own_list_size: 50, num_iter: 1 }
+Average proof generation time = 43.291106129s
+Average proof verification time = 8.5610326s
+Generation starts
+Verification starts
+Total simulation time = 103.312910624s
+Options = Opt { anon_list_size: 1000, own_list_size: 100, num_iter: 1 }
+Average proof generation time = 86.189991057s
+Average proof verification time = 17.122832892s
+Generation starts
+Verification starts
+Total simulation time = 206.036932835s
+Options = Opt { anon_list_size: 1000, own_list_size: 200, num_iter: 1 }
+Average proof generation time = 171.847973219s
+Average proof verification time = 34.188877076s
+Generation starts
+Verification starts
+Total simulation time = 456.643794549s
+Options = Opt { anon_list_size: 1000, own_list_size: 500, num_iter: 1 }
+Average proof generation time = 386.623338051s
+Average proof verification time = 70.02037915s
+Generation starts
+Verification starts
+Total simulation time = 824.224623573s
+Options = Opt { anon_list_size: 1000, own_list_size: 800, num_iter: 1 }
+Average proof generation time = 686.220311881s
+Average proof verification time = 138.004227642s
